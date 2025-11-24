@@ -25,37 +25,104 @@ import java.util.ResourceBundle;
 
 public class GuiController implements Initializable {
 
+    //size of each cell (brick) in grid, in pixels    
     private static final int BRICK_SIZE = 20;
+    
+    // Number of hidden rows at the top of the board(Spawn area)
+    private static final int HIDDEN_TOP_ROWS = 2;
+
+    // Y offset for the brickPanel so it lines up visually with the grid 
+    private static final int BRICK_PANEL_Y_OFFSET = -42;
+
+    // How offen the piece falls automatically (milliseconds)
+    private static final int FALL_INTERVAL_MS = 400 
 
     @FXML
-    private GridPane gamePanel;
+    private GridPane gamePanel;     //main board grid
 
     @FXML
-    private Group groupNotification;
+    private Group groupNotification;    //group of score notifications
 
     @FXML
-    private GridPane brickPanel;
+    private GridPane brickPanel;    //grid us to discplay current piece
 
     @FXML
-    private GameOverPanel gameOverPanel;
+    private GameOverPanel gameOverPanel;    //overlay shgow when gameover 
 
+    //background cells
     private Rectangle[][] displayMatrix;
 
-    private InputEventListener eventListener;
-
+    // current falling piece 
     private Rectangle[][] rectangles;
 
+    //  Listener that sends user input events to the game logic 
+    private InputEventListener eventListener;
+
+    // Timer for automatic piece falling 
     private Timeline timeLine;
 
+    // state flags for input and game logic 
     private final BooleanProperty isPause = new SimpleBooleanProperty();
-
     private final BooleanProperty isGameOver = new SimpleBooleanProperty();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        Font.loadFont(getClass().getClassLoader().getResource("digital.ttf").toExternalForm(), 38);
+        // Load custom digital font if available (used for score etc.)
+        URL fontUrl = getClass().getClassLoader().getResource("digital.ttf");
+        if (fontUrl != null) {
+            Font.loadFont(fontUrl.toExternalForm(), 38);
+        }
+
+        //Allow the game panel to receive keyboard focus and request it intially 
         gamePanel.setFocusTraversable(true);
         gamePanel.requestFocus();
+
+        // Handle keyboard input for movement and new game
+        gamePanel.setOnkeyPressed(this::handleKeyPressed);
+
+        //Game over panel is hidden at the start
+        gameOverPanel.setVisible(false);
+        }
+
+    /**
+    * Centralised key handler so initialize () stays cleaner.
+    */
+
+    private void handleKeyPressed(KeyEvent event){
+        //only handle movement input if not paused and not game over 
+        if(canHandleInput()){
+            KeyCode code = event.getCode();
+    
+
+        if(code == KeyCode.LEFT || code == KeyCode.A) {
+            refreshBrick(eventListener.onLeftEvent(
+                new MoveEvent(EventType.LEFT, EventSource.USER)));
+            event.consume();
+        }
+
+        if(code == KeyCode.RIGHT || code == KeyCode.D) {
+            refreshBrick(eventListener.onRightEvent(
+                new MoveEvent(EventType.RIGHT, EventSource.USER)));
+            event.consume();
+        }
+
+        if(code == KeyCode.UP || code == KeyCode.W) {
+            refreshBrick(eventListener.onRotateEvent(
+                new MoveEvent(EventType.ROTATE, EventSource.USER)));
+            event.consume();
+        }
+
+        if(code == KeyCode.DOWN || code ==KeyCode.S){
+            moveDown(new MoveEvent(EventType.DOWN, EventSource.USER));
+            event.consume();
+        }
+    }
+    //Press "N" at anytime to start a new game 
+    if (event.getCode() == KeyCode == N){
+        newGame(null);
+        event.consume();
+    }
+}
         gamePanel.setOnKeyPressed(new EventHandler<KeyEvent>() {
             @Override
             public void handle(KeyEvent keyEvent) {
@@ -81,6 +148,7 @@ public class GuiController implements Initializable {
                     newGame(null);
                 }
             }
+
         });
         gameOverPanel.setVisible(false);
 
