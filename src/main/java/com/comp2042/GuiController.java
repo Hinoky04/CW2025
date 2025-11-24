@@ -127,11 +127,61 @@ public class GuiController implements Initializable {
         return !isPause.get() && !isGameOver.get();
     }
 
+    // --- Old version of initGameView (kept for reference for the marker) ---
+    // /**
+    //  * Called by the game logic to set up the initial board and piece view.
+    //  */
+    // public void initGameView(int[][] boardMatrix, ViewData brick) {
+    //     // Create rectangles for the background board
+    //     displayMatrix = new Rectangle[boardMatrix.length][boardMatrix[0].length];
+    //     for (int row = HIDDEN_TOP_ROWS; row < boardMatrix.length; row++) {
+    //         for (int col = 0; col < boardMatrix[row].length; col++) {
+    //             Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
+    //             cell.setFill(Color.TRANSPARENT);
+    //             displayMatrix[row][col] = cell;
+    //             // We skip the hidden top rows when adding to the visible grid
+    //             gamePanel.add(cell, col, row - HIDDEN_TOP_ROWS);
+    //         }
+    //     }
+    //
+    //     // Create rectangles for the current falling brick
+    //     int[][] brickData = brick.getBrickData();
+    //     rectangles = new Rectangle[brickData.length][brickData[0].length];
+    //     for (int row = 0; row < brickData.length; row++) {
+    //         for (int col = 0; col < brickData[row].length; col++) {
+    //             Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
+    //             cell.setFill(getFillColor(brickData[row][col]));
+    //             rectangles[row][col] = cell;
+    //             brickPanel.add(cell, col, row);
+    //         }
+    //     }
+    //
+    //     // Position the brickPanel according to the starting brick position
+    //     updateBrickPanelPosition(brick);
+    //
+    //     // Create and start the automatic down-movement timer
+    //     timeLine = new Timeline(new KeyFrame(
+    //             Duration.millis(FALL_INTERVAL_MS),
+    //             ae -> moveDown(new MoveEvent(EventType.DOWN, EventSource.THREAD))
+    //     ));
+    //     timeLine.setCycleCount(Timeline.INDEFINITE);
+    //     timeLine.play();
+    // }
+
     /**
      * Called by the game logic to set up the initial board and piece view.
+     * NEW version: split into smaller helpers for readability and maintenance.
      */
     public void initGameView(int[][] boardMatrix, ViewData brick) {
-        // Create rectangles for the background board
+        initBackgroundCells(boardMatrix);
+        initFallingBrick(brick);
+        startAutoDropTimer();
+    }
+
+    /**
+     * Creates rectangles for the background board and adds them to the gamePanel.
+     */
+    private void initBackgroundCells(int[][] boardMatrix) {
         displayMatrix = new Rectangle[boardMatrix.length][boardMatrix[0].length];
         for (int row = HIDDEN_TOP_ROWS; row < boardMatrix.length; row++) {
             for (int col = 0; col < boardMatrix[row].length; col++) {
@@ -142,8 +192,12 @@ public class GuiController implements Initializable {
                 gamePanel.add(cell, col, row - HIDDEN_TOP_ROWS);
             }
         }
+    }
 
-        // Create rectangles for the current falling brick
+    /**
+     * Creates rectangles for the current falling brick and positions the brickPanel.
+     */
+    private void initFallingBrick(ViewData brick) {
         int[][] brickData = brick.getBrickData();
         rectangles = new Rectangle[brickData.length][brickData[0].length];
         for (int row = 0; row < brickData.length; row++) {
@@ -154,11 +208,14 @@ public class GuiController implements Initializable {
                 brickPanel.add(cell, col, row);
             }
         }
-
         // Position the brickPanel according to the starting brick position
         updateBrickPanelPosition(brick);
+    }
 
-        // Create and start the automatic down-movement timer
+    /**
+     * Creates and starts the automatic down-movement timer.
+     */
+    private void startAutoDropTimer() {
         timeLine = new Timeline(new KeyFrame(
                 Duration.millis(FALL_INTERVAL_MS),
                 ae -> moveDown(new MoveEvent(EventType.DOWN, EventSource.THREAD))
