@@ -58,9 +58,16 @@ public class GuiController implements Initializable {
     // Timer for automatic down movement
     private Timeline timeLine;
 
-    // State flags for input and game flow
-    private final BooleanProperty isPause = new SimpleBooleanProperty();
-    private final BooleanProperty isGameOver = new SimpleBooleanProperty();
+    // --- OLD flags (replaced by GameState) ---------------------------------
+    // private final BooleanProperty isPause = new SimpleBooleanProperty();
+    // private final BooleanProperty isGameOver = new SimpleBooleanProperty();
+
+    // NEW: single source of truth for game state.
+    private GameState gameState = GameState.PLAYING;
+
+    // Still kept for potential bindings, but now driven by gameState.
+    private final BooleanProperty isPause = new SimpleBooleanProperty(false);
+    private final BooleanProperty isGameOver = new SimpleBooleanProperty(false);
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -122,51 +129,14 @@ public class GuiController implements Initializable {
 
     /**
      * Small helper to describe when we are allowed to handle movement.
+     * 只有在 PLAYING 状态下才允许响应输入。
      */
     private boolean canHandleInput() {
-        return !isPause.get() && !isGameOver.get();
+        return gameState == GameState.PLAYING;
     }
 
-    // --- Old version of initGameView (kept for reference for the marker) ---
-    // /**
-    //  * Called by the game logic to set up the initial board and piece view.
-    //  */
-    // public void initGameView(int[][] boardMatrix, ViewData brick) {
-    //     // Create rectangles for the background board
-    //     displayMatrix = new Rectangle[boardMatrix.length][boardMatrix[0].length];
-    //     for (int row = HIDDEN_TOP_ROWS; row < boardMatrix.length; row++) {
-    //         for (int col = 0; col < boardMatrix[row].length; col++) {
-    //             Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
-    //             cell.setFill(Color.TRANSPARENT);
-    //             displayMatrix[row][col] = cell;
-    //             // We skip the hidden top rows when adding to the visible grid
-    //             gamePanel.add(cell, col, row - HIDDEN_TOP_ROWS);
-    //         }
-    //     }
-    //
-    //     // Create rectangles for the current falling brick
-    //     int[][] brickData = brick.getBrickData();
-    //     rectangles = new Rectangle[brickData.length][brickData[0].length];
-    //     for (int row = 0; row < brickData.length; row++) {
-    //         for (int col = 0; col < brickData[row].length; col++) {
-    //             Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
-    //             cell.setFill(getFillColor(brickData[row][col]));
-    //             rectangles[row][col] = cell;
-    //             brickPanel.add(cell, col, row);
-    //         }
-    //     }
-    //
-    //     // Position the brickPanel according to the starting brick position
-    //     updateBrickPanelPosition(brick);
-    //
-    //     // Create and start the automatic down-movement timer
-    //     timeLine = new Timeline(new KeyFrame(
-    //             Duration.millis(FALL_INTERVAL_MS),
-    //             ae -> moveDown(new MoveEvent(EventType.DOWN, EventSource.THREAD))
-    //     ));
-    //     timeLine.setCycleCount(Timeline.INDEFINITE);
-    //     timeLine.play();
-    // }
+    // --- Old initGameView kept as comment for marker reference ----------------
+    // public void initGameView(int[][] boardMatrix, ViewData brick) { ... }
 
     /**
      * Called by the game logic to set up the initial board and piece view.
@@ -271,7 +241,8 @@ public class GuiController implements Initializable {
      * Refreshes the visual representation of the current brick.
      */
     private void refreshBrick(ViewData brick) {
-        if (!isPause.get()) {
+        // 只有在 PLAYING 状态才更新砖块视图
+        if (gameState == GameState.PLAYING) {
             updateBrickPanelPosition(brick);
 
             int[][] brickData = brick.getBrickData();
@@ -307,7 +278,7 @@ public class GuiController implements Initializable {
      * Called either by the timer (thread) or user soft drop.
      */
     private void moveDown(MoveEvent event) {
-        if (!isPause.get()) {
+        if (gameState == GameState.PLAYING) {
             DownData downData = eventListener.onDownEvent(event);
 
             // If a row was cleared, show a score notification
@@ -342,7 +313,11 @@ public class GuiController implements Initializable {
     public void gameOver() {
         timeLine.stop();
         gameOverPanel.setVisible(true);
+
+        // 更新状态：游戏结束
+        gameState = GameState.GAME_OVER;
         isGameOver.set(true);
+        isPause.set(false);
     }
 
     public void newGame(javafx.event.ActionEvent actionEvent) {
@@ -351,14 +326,27 @@ public class GuiController implements Initializable {
         eventListener.createNewGame();
         gamePanel.requestFocus();
         timeLine.play();
+
+        // 回到 PLAYING 状态
+        gameState = GameState.PLAYING;
         isPause.set(false);
         isGameOver.set(false);
     }
 
     /**
      * TODO: Implement pause/resume logic in a later feature.
+     * 这里可以在 PLAYING / PAUSED 之间切换，先留 TODO。
      */
     public void pauseGame(javafx.event.ActionEvent actionEvent) {
+        // Simple toggle for future: PLAYING <-> PAUSED
+        // if (gameState == GameState.PLAYING) {
+        //     gameState = GameState.PAUSED;
+        //     isPause.set(true);
+        // } else if (gameState == GameState.PLAYING) {
+        //     gameState = GameState.PLAYING;
+        //     isPause.set(false);
+        // }
+
         gamePanel.requestFocus();
     }
 }
