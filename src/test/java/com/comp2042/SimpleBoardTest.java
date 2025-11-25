@@ -94,7 +94,7 @@ public class SimpleBoardTest {
      * If there is no full row, clearRows() should report 0 lines removed.
      */
     /**
-    * We first assumed that after clearing a full row the bottom row would be all zeros.
+    * I first assumed that after clearing a full row the bottom row would be all zeros.
     * The initial assertion failed and showed that one block from the row above
     * correctly falls down into the bottom row. The commented-out assertion below
     * documents this wrong assumption; the active assertions check the correct behaviour.
