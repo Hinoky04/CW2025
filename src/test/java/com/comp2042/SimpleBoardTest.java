@@ -118,4 +118,27 @@ public class SimpleBoardTest {
         assertEquals(0, clearRow.getLinesRemoved(),
                 "No full rows should be removed");
     }
+
+        /**
+     * createNewBrick() should spawn the brick near the top of the board,
+     * not in the middle.
+     */
+    @Test
+    void createNewBrick_spawnsNearTop() {
+        // Use the real board size for readability
+        SimpleBoard board = new SimpleBoard(25, 10);
+
+        // When: we create the first brick
+        boolean collision = board.createNewBrick();
+        ViewData viewData = board.getViewData();
+
+        int spawnY = viewData.getyPosition();
+
+        // Then: it should not collide immediately on an empty board
+        assertFalse(collision, "First brick on an empty board should not collide");
+
+        // And: the spawn Y should be near the top (e.g. hidden/top rows, not middle)
+        assertTrue(spawnY <= 2,
+                "Brick should spawn near the top of the board, but was at y=" + spawnY);
+    }
 }
