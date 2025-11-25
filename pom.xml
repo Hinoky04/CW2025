@@ -11,27 +11,34 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Define a variable for JUnit version so we can reuse it below -->
         <junit.version>5.12.1</junit.version>
     </properties>
 
     <dependencies>
+        <!-- JavaFX controls library -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>21.0.6</version>
         </dependency>
+
+        <!-- JavaFX FXML library (use to load .fxml file)-->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>21.0.6</version>
         </dependency>
 
+        <!-- JUnit 5 API for writing tests (test API) -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- JUnit 5 engine for running tests (running agent) -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
@@ -42,6 +49,7 @@
 
     <build>
         <plugins>
+            <!-- COmpiler plugin : to tell Maven which Java version to use -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -51,6 +59,8 @@
                     <target>23</target>
                 </configuration>
             </plugin>
+
+            <!-- JavaFX Maven plugin (JavaFX plugin) for running the app with "mvn javafx::run"-->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -70,6 +80,13 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- Maven Surefire plugin: runs JUnit 5 (Jupiter) tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
             </plugin>
         </plugins>
     </build>

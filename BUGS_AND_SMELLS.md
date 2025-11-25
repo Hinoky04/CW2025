@@ -29,3 +29,10 @@
 - SMELL-04: Tight coupling between `GameController` and `SimpleBoard`
   - Evidence: `GameController` directly constructs `new SimpleBoard(ROWS, COLUMNS)` instead of using the `Board` interface.
   - Impact: Makes it harder to swap in another `Board` implementation or write unit tests with a fake board.
+
+### TEST-01: Wrong assumption about line clearing (fixed)
+
+- Area: `SimpleBoard.clearRows()` and `SimpleBoardTest.clearRows_removesSingleFullRow`.
+- Initial assumption: After clearing a full row, the bottom row would become completely empty (all zeros).
+- What really happens: The implementation correctly lets rows above fall down, so a block from the row above can end up in the bottom row.
+- Fix: Updated the test to expect the falling behaviour and left the old assertion commented in the test file as documentation.
