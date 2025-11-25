@@ -2,10 +2,15 @@
 
 ## Behaviour / Bug observations
 
-- BUG-01: Pieces spawn too low (middle instead of near top)
-  - Description: New bricks appear around the middle of the visible board instead of near the top, reducing reaction time.
-  - Steps: Start a new game and observe the initial spawn position.
-  - Suspected cause: SimpleBoard.createNewBrick() uses a fixed offset (SPAWN_X, SPAWN_Y) with a large SPAWN_Y plus hidden top rows in the GUI.
+- BUG-01: Pieces spawn too low (middle instead of near top) **[Fixed in Phase 3.5]**
+  - Original description: New bricks appear around the middle of the visible board instead of near the top, reducing reaction time.
+  - Steps (original): Start a new game and observe the initial spawn position.
+  - Root cause: `SimpleBoard.createNewBrick()` used a fixed offset `(SPAWN_X, SPAWN_Y)` with `SPAWN_Y = 10` on a 25-row board, so pieces spawned roughly in the middle.
+  - Fix: In `SimpleBoard` changed `SPAWN_Y` from `10` to `1` so new bricks start near the top/hidden rows instead of in the middle.
+  - Regression test: Added `SimpleBoardTest.createNewBrick_spawnsNearTop()` which asserts:
+    - `createNewBrick()` does not collide on an empty board, and
+    - the spawn Y position is near the top (`spawnY <= 2`).
+  - Result: Test now passes and the first piece appears near the top of the board, giving the player more reaction time.
 
 - BUG-02: Piece cannot rotate at the left/right wall
   - Description: When a piece is tight against the left or right border, rotation is often blocked even if it would still fit.
