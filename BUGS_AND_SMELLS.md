@@ -12,10 +12,12 @@
     - the spawn Y position is near the top (`spawnY <= 2`).
   - Result: Test now passes and the first piece appears near the top of the board, giving the player more reaction time.
 
-- BUG-02: Piece cannot rotate at the left/right wall
+- BUG-02: Piece cannot rotate at the left/right wall **(fixed in phase3.5-bugfix)**
   - Description: When a piece is tight against the left or right border, rotation is often blocked even if it would still fit.
   - Steps: Move a piece fully to the wall and press rotate.
-  - Suspected cause: SimpleBoard.rotateLeftBrick() uses MatrixOperations.intersect() and any out-of-bounds cell is treated as a collision. No wall-kick behaviour is implemented.
+  - Original cause: `SimpleBoard.rotateLeftBrick()` only tried rotating in place; any out-of-bounds cell was treated as a collision.
+  - Fix: Added a small "wall-kick" in `rotateLeftBrick()` – try rotation in place, then at x-1 and x+1. This allows rotation when the piece is next to a wall but still within the board.
+
 
 ## Code smells (from reading the code)
 

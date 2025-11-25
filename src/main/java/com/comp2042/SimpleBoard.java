@@ -96,22 +96,48 @@ public class SimpleBoard implements Board {
         return true;
     }
 
-    /** Rotate current brick left if possible. */
+    /** Rotate current brick left if possible, with a simple wall-kick near borders. */
     @Override
     public boolean rotateLeftBrick() {
         int[][] snapshot = MatrixOperations.copy(boardMatrix);
         NextShapeInfo nextShape = brickRotator.getNextShape();
-        boolean conflict = MatrixOperations.intersect(
+
+        int currentX = (int) currentOffset.getX();
+        int currentY = (int) currentOffset.getY();
+
+        // 1) Try rotating in place first
+        boolean conflictInPlace = MatrixOperations.intersect(
                 snapshot,
                 nextShape.getShape(),
-                (int) currentOffset.getX(),
-                (int) currentOffset.getY()
+                currentX,
+                currentY
         );
-        if (conflict) {
-            return false;
+        if (!conflictInPlace) {
+            brickRotator.setCurrentShape(nextShape.getPosition());
+            return true;
         }
-        brickRotator.setCurrentShape(nextShape.getPosition());
-        return true;
+
+        // 2) Simple wall-kick: try shifting one column left or right
+        int[] kicks = {-1, 1};
+        for (int dx : kicks) {
+            int kickedX = currentX + dx;
+            boolean conflictWithKick = MatrixOperations.intersect(
+                    snapshot,
+                    nextShape.getShape(),
+                    kickedX,
+                    currentY
+            );
+
+            if (!conflictWithKick) {
+                // Move the brick one step away from the wall and apply the rotation
+                currentOffset = new Point(kickedX, currentY);
+                brickRotator.setCurrentShape(nextShape.getPosition());
+                return true;
+            }
+        }
+
+        // 3) No valid rotation position found → keep the brick as it is
+        return false;
     }
 
     /**
