@@ -25,7 +25,7 @@ public class SimpleBoard implements Board {
 
     // Default brick spawn position (x,y)
     private static final int SPAWN_X = 4;
-    private static final int SPAWN_Y = 10;
+    private static final int SPAWN_Y = 1;
 
     // Core fields
     private final BrickGenerator brickGenerator;
