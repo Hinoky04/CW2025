@@ -10,6 +10,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.Group;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
@@ -36,6 +37,9 @@ public class GuiController implements Initializable {
     // How often the piece falls automatically (milliseconds)
     private static final int FALL_INTERVAL_MS = 400;
 
+    // How many top visible rows are considered "danger zone".
+    private static final int DANGER_VISIBLE_ROWS = 3;
+
     @FXML
     private GridPane gamePanel;          // main board grid
 
@@ -52,6 +56,9 @@ public class GuiController implements Initializable {
     private Pane pauseOverlay;           // overlay shown when the game is paused
 
     @FXML
+    private BorderPane gameBoard;        // outer border of the board (for danger style)
+
+    @FXML
     private Text scoreText;              // shows current score in the HUD
 
     @FXML
@@ -59,6 +66,9 @@ public class GuiController implements Initializable {
 
     @FXML
     private Text comboText;              // shows current combo multiplier
+
+    @FXML
+    private Text dangerText;             // warning text when stack is near the top
 
     // Background cells (for the board)
     private Rectangle[][] displayMatrix;
@@ -79,6 +89,9 @@ public class GuiController implements Initializable {
     private final BooleanProperty isPause = new SimpleBooleanProperty(false);
     private final BooleanProperty isGameOver = new SimpleBooleanProperty(false);
 
+    // Tracks whether we are currently in the danger zone.
+    private final BooleanProperty isDanger = new SimpleBooleanProperty(false);
+
     /**
      * Central helper for changing game state.
      * Keeps internal flags and overlays in sync.
@@ -94,7 +107,13 @@ public class GuiController implements Initializable {
         if (gameOverPanel != null) {
             gameOverPanel.setVisible(newState == GameState.GAME_OVER);
         }
+
+        // New: once the game is over, we hide the danger warning.
+        if (newState == GameState.GAME_OVER) {
+            setDanger(false);
+        }
     }
+
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -113,6 +132,9 @@ public class GuiController implements Initializable {
 
         // Use centralised state helper so overlays stay consistent.
         setGameState(GameState.PLAYING);
+
+        // Ensure danger HUD starts hidden.
+        setDanger(false);
     }
 
     /**
@@ -291,7 +313,8 @@ public class GuiController implements Initializable {
     }
 
     /**
-     * Refreshes the background board view from the board matrix.
+     * Refreshes the background board view from the board matrix
+     * and updates the danger state based on the top visible rows.
      */
     public void refreshGameBackground(int[][] board) {
         for (int row = HIDDEN_TOP_ROWS; row < board.length; row++) {
@@ -299,6 +322,9 @@ public class GuiController implements Initializable {
                 setRectangleData(board[row][col], displayMatrix[row][col]);
             }
         }
+
+        // After updating the visible board, recompute whether we are in danger.
+        updateDangerFromBoard(board);
     }
 
     /**
@@ -430,5 +456,54 @@ public class GuiController implements Initializable {
      */
     public void pauseGame(javafx.event.ActionEvent actionEvent) {
         togglePause();
+    }
+
+    /**
+     * Updates the danger state based on the contents of the board matrix.
+     * If any block is inside the top DANGER_VISIBLE_ROWS of the visible area,
+     * we consider the player to be in the danger zone.
+     */
+    private void updateDangerFromBoard(int[][] board) {
+        boolean found = false;
+
+        int visibleRows = board.length - HIDDEN_TOP_ROWS;
+        int limit = Math.min(DANGER_VISIBLE_ROWS, visibleRows);
+
+        for (int row = HIDDEN_TOP_ROWS; row < HIDDEN_TOP_ROWS + limit; row++) {
+            for (int col = 0; col < board[row].length; col++) {
+                if (board[row][col] != 0) {
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                break;
+            }
+        }
+
+        setDanger(found);
+    }
+
+    /**
+     * Applies or removes danger visuals on the HUD and board.
+     */
+    private void setDanger(boolean value) {
+        if (isDanger.get() == value) {
+            return; // nothing to change
+        }
+        isDanger.set(value);
+
+        if (dangerText != null) {
+            dangerText.setVisible(value);
+        }
+        if (gameBoard != null) {
+            if (value) {
+                if (!gameBoard.getStyleClass().contains("dangerBoard")) {
+                    gameBoard.getStyleClass().add("dangerBoard");
+                }
+            } else {
+                gameBoard.getStyleClass().remove("dangerBoard");
+            }
+        }
     }
 }
