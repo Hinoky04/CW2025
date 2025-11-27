@@ -11,10 +11,12 @@ import javafx.scene.Group;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.util.Duration;
 
 import java.net.URL;
@@ -46,6 +48,18 @@ public class GuiController implements Initializable {
     @FXML
     private GameOverPanel gameOverPanel; // overlay shown when the game ends
 
+    @FXML
+    private Pane pauseOverlay;           // overlay shown when the game is paused
+
+    @FXML
+    private Text scoreText;              // shows current score in the HUD
+
+    @FXML
+    private Text levelText;              // shows current level in the HUD
+
+    @FXML
+    private Text comboText;              // shows current combo multiplier
+
     // Background cells (for the board)
     private Rectangle[][] displayMatrix;
 
@@ -58,20 +72,33 @@ public class GuiController implements Initializable {
     // Timer for automatic down movement
     private Timeline timeLine;
 
-    // --- OLD flags (replaced by GameState) ---------------------------------
-    // private final BooleanProperty isPause = new SimpleBooleanProperty();
-    // private final BooleanProperty isGameOver = new SimpleBooleanProperty();
-
-    // NEW: single source of truth for game state.
+    // Single source of truth for the current game state.
     private GameState gameState = GameState.PLAYING;
 
-    // Still kept for potential bindings, but now driven by gameState.
+    // Extra flags kept for possible UI bindings later.
     private final BooleanProperty isPause = new SimpleBooleanProperty(false);
     private final BooleanProperty isGameOver = new SimpleBooleanProperty(false);
 
+    /**
+     * Central helper for changing game state.
+     * Keeps internal flags and overlays in sync.
+     */
+    private void setGameState(GameState newState) {
+        gameState = newState;
+        isPause.set(newState == GameState.PAUSED);
+        isGameOver.set(newState == GameState.GAME_OVER);
+
+        if (pauseOverlay != null) {
+            pauseOverlay.setVisible(newState == GameState.PAUSED);
+        }
+        if (gameOverPanel != null) {
+            gameOverPanel.setVisible(newState == GameState.GAME_OVER);
+        }
+    }
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // Load custom digital font if available (used for score etc.)
+        // Load custom digital font if available (used for score HUD etc.)
         URL fontUrl = getClass().getClassLoader().getResource("digital.ttf");
         if (fontUrl != null) {
             Font.loadFont(fontUrl.toExternalForm(), 38);
@@ -81,55 +108,65 @@ public class GuiController implements Initializable {
         gamePanel.setFocusTraversable(true);
         gamePanel.requestFocus();
 
-        // Handle keyboard input for movement and new game
+        // Handle keyboard input for movement, pause, and new game
         gamePanel.setOnKeyPressed(this::handleKeyPressed);
 
-        // Game over panel is hidden at the start
-        gameOverPanel.setVisible(false);
+        // Use centralised state helper so overlays stay consistent.
+        setGameState(GameState.PLAYING);
     }
 
     /**
-     * Centralised key handler so initialize() stays cleaner.
+     * Centralised key handler.
+     * Handles pause (P) and new game (N) in addition to movement.
      */
     private void handleKeyPressed(KeyEvent event) {
-        // Only handle movement input if not paused and not game over
-        if (canHandleInput()) {
-            KeyCode code = event.getCode();
+        KeyCode code = event.getCode();
 
-            if (code == KeyCode.LEFT || code == KeyCode.A) {
-                refreshBrick(eventListener.onLeftEvent(
-                        new MoveEvent(EventType.LEFT, EventSource.USER)));
-                event.consume();
-            }
-
-            if (code == KeyCode.RIGHT || code == KeyCode.D) {
-                refreshBrick(eventListener.onRightEvent(
-                        new MoveEvent(EventType.RIGHT, EventSource.USER)));
-                event.consume();
-            }
-
-            if (code == KeyCode.UP || code == KeyCode.W) {
-                refreshBrick(eventListener.onRotateEvent(
-                        new MoveEvent(EventType.ROTATE, EventSource.USER)));
-                event.consume();
-            }
-
-            if (code == KeyCode.DOWN || code == KeyCode.S) {
-                moveDown(new MoveEvent(EventType.DOWN, EventSource.USER));
-                event.consume();
-            }
+        // P toggles pause/resume even when already paused
+        if (code == KeyCode.P) {
+            togglePause();
+            event.consume();
+            return;
         }
 
-        // Press 'N' at any time to start a new game
-        if (event.getCode() == KeyCode.N) {
+        // N starts a new game at any time
+        if (code == KeyCode.N) {
             newGame(null);
+            event.consume();
+            return;
+        }
+
+        // Movement and rotation only allowed while playing
+        if (!canHandleInput()) {
+            return;
+        }
+
+        if (code == KeyCode.LEFT || code == KeyCode.A) {
+            refreshBrick(eventListener.onLeftEvent(
+                    new MoveEvent(EventType.LEFT, EventSource.USER)));
+            event.consume();
+        }
+
+        if (code == KeyCode.RIGHT || code == KeyCode.D) {
+            refreshBrick(eventListener.onRightEvent(
+                    new MoveEvent(EventType.RIGHT, EventSource.USER)));
+            event.consume();
+        }
+
+        if (code == KeyCode.UP || code == KeyCode.W) {
+            refreshBrick(eventListener.onRotateEvent(
+                    new MoveEvent(EventType.ROTATE, EventSource.USER)));
+            event.consume();
+        }
+
+        if (code == KeyCode.DOWN || code == KeyCode.S) {
+            moveDown(new MoveEvent(EventType.DOWN, EventSource.USER));
             event.consume();
         }
     }
 
     /**
-     * Small helper to describe when we are allowed to handle movement.
-     * 只有在 PLAYING 状态下才允许响应输入。
+     * We only handle movement input while the game is actively playing.
      */
     private boolean canHandleInput() {
         return gameState == GameState.PLAYING;
@@ -140,7 +177,7 @@ public class GuiController implements Initializable {
 
     /**
      * Called by the game logic to set up the initial board and piece view.
-     * NEW version: split into smaller helpers for readability and maintenance.
+     * Split into smaller helpers for readability.
      */
     public void initGameView(int[][] boardMatrix, ViewData brick) {
         initBackgroundCells(boardMatrix);
@@ -158,7 +195,7 @@ public class GuiController implements Initializable {
                 Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
                 cell.setFill(Color.TRANSPARENT);
                 displayMatrix[row][col] = cell;
-                // We skip the hidden top rows when adding to the visible grid
+                // Skip hidden top rows when adding to the visible grid
                 gamePanel.add(cell, col, row - HIDDEN_TOP_ROWS);
             }
         }
@@ -241,7 +278,6 @@ public class GuiController implements Initializable {
      * Refreshes the visual representation of the current brick.
      */
     private void refreshBrick(ViewData brick) {
-        // 只有在 PLAYING 状态才更新砖块视图
         if (gameState == GameState.PLAYING) {
             updateBrickPanelPosition(brick);
 
@@ -304,49 +340,95 @@ public class GuiController implements Initializable {
     }
 
     /**
-     * TODO: Bind score property to a label in the UI (to be implemented later).
+     * Binds the score property from the model to the score text in the HUD.
      */
-    public void bindScore(IntegerProperty integerProperty) {
-        // Implementation will be added when score label is wired up
+    public void bindScore(IntegerProperty scoreProperty) {
+        if (scoreText != null) {
+            scoreText.textProperty().bind(scoreProperty.asString("Score %d"));
+        }
     }
 
+    /**
+     * Binds the level property from the model to the HUD and updates drop speed.
+     */
+    public void bindLevel(IntegerProperty levelProperty) {
+        if (levelText != null) {
+            levelText.textProperty().bind(levelProperty.asString("Level %d"));
+        }
+
+        // When level changes, adjust the drop speed.
+        levelProperty.addListener((obs, oldLevel, newLevel) ->
+                onLevelChanged(newLevel.intValue()));
+    }
+
+    /**
+     * Binds the combo property from the model to the HUD.
+     * Shows "Combo xN" so the player can see when a chain is building or broken.
+     */
+    public void bindCombo(IntegerProperty comboProperty) {
+        if (comboText != null) {
+            comboText.textProperty().bind(comboProperty.asString("Combo x%d"));
+        }
+    }
+
+    /**
+     * Adjusts the timeline speed when the level changes.
+     * Higher level = faster drop.
+     */
+    private void onLevelChanged(int newLevel) {
+        if (timeLine == null) {
+            return;
+        }
+
+        // Simple curve: each level is roughly 15% faster than the previous one.
+        double rate = 1.0 + (newLevel - 1) * 0.15;
+        timeLine.setRate(rate);
+    }
+
+    /**
+     * Game over handler.
+     * Uses setGameState so flags and overlays stay consistent.
+     */
     public void gameOver() {
         timeLine.stop();
-        gameOverPanel.setVisible(true);
-
-        // 更新状态：游戏结束
-        gameState = GameState.GAME_OVER;
-        isGameOver.set(true);
-        isPause.set(false);
+        setGameState(GameState.GAME_OVER);
     }
 
+    /**
+     * Starts a new game from the UI.
+     * Uses setGameState so flags and overlays stay consistent.
+     */
     public void newGame(javafx.event.ActionEvent actionEvent) {
         timeLine.stop();
-        gameOverPanel.setVisible(false);
         eventListener.createNewGame();
         gamePanel.requestFocus();
         timeLine.play();
 
-        // 回到 PLAYING 状态
-        gameState = GameState.PLAYING;
-        isPause.set(false);
-        isGameOver.set(false);
+        setGameState(GameState.PLAYING);
     }
 
     /**
-     * TODO: Implement pause/resume logic in a later feature.
-     * 这里可以在 PLAYING / PAUSED 之间切换，先留 TODO。
+     * Core pause/resume behaviour.
+     * PLAYING -> PAUSED pauses the timeline and shows overlay.
+     * PAUSED  -> PLAYING resumes the timeline and hides overlay.
+     */
+    private void togglePause() {
+        if (gameState == GameState.PLAYING) {
+            timeLine.pause();
+            setGameState(GameState.PAUSED);
+        } else if (gameState == GameState.PAUSED) {
+            timeLine.play();
+            setGameState(GameState.PLAYING);
+            gamePanel.requestFocus();
+        }
+        // In GAME_OVER or other states we ignore pause.
+    }
+
+    /**
+     * Pause button handler in the toolbar/menu.
+     * Simply calls the core togglePause() method.
      */
     public void pauseGame(javafx.event.ActionEvent actionEvent) {
-        // Simple toggle for future: PLAYING <-> PAUSED
-        // if (gameState == GameState.PLAYING) {
-        //     gameState = GameState.PAUSED;
-        //     isPause.set(true);
-        // } else if (gameState == GameState.PLAYING) {
-        //     gameState = GameState.PLAYING;
-        //     isPause.set(false);
-        // }
-
-        gamePanel.requestFocus();
+        togglePause();
     }
 }

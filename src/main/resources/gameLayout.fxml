@@ -1,25 +1,79 @@
 <?import com.comp2042.GameOverPanel?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.Group?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 <?import java.net.URL?>
+
+<!-- Main game screen. GuiController is the brain behind this layout. -->
 <Pane fx:controller="com.comp2042.GuiController"
       xmlns:fx="http://javafx.com/fxml">
-    <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
-    <BorderPane styleClass="gameBoard" fx:id="gameBoard">
-        <center>
-            <GridPane fx:id="gamePanel" hgap="1" vgap="1" layoutY="30" layoutX="40"/>
-        </center>
-    </BorderPane>
 
-    <Group fx:id="groupNotification" layoutX="14" layoutY="203">
-        <VBox alignment="CENTER">
-            <GameOverPanel fx:id="gameOverPanel"/>
+    <children>
+        <!-- Small grid on the side that shows the next brick. -->
+        <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
+
+        <!-- Outer frame for the main board (border, glow, etc.). -->
+        <BorderPane styleClass="gameBoard" fx:id="gameBoard">
+            <center>
+                <!-- Actual 10xN board where the pieces fall. -->
+                <GridPane fx:id="gamePanel"
+                          hgap="1" vgap="1"
+                          layoutY="30" layoutX="40"/>
+            </center>
+        </BorderPane>
+
+        <!--
+          Simple HUD showing score and level.
+          Values are bound in GuiController.bindScore() and bindLevel().
+        -->
+        <VBox layoutX="260.0" layoutY="40.0" spacing="5.0">
+            <Text fx:id="scoreText"
+                  text="Score 0"/>
+            <Text fx:id="levelText"
+                  text="Level 1"/>
+            <Text fx:id="comboText"
+                  text="Combo x0"/>
         </VBox>
-    </Group>
+
+
+        <!--
+          Simple pause overlay.
+          GuiController.togglePause() will show/hide this when the user presses P.
+        -->
+        <Pane fx:id="pauseOverlay"
+              layoutX="0.0" layoutY="0.0"
+              prefWidth="400.0" prefHeight="500.0"
+              visible="false"
+              mouseTransparent="true"
+              style="-fx-background-color: rgba(0,0,0,0.5);">
+            <children>
+                <Label text="PAUSED - Press P to resume"
+                       styleClass="gameOverStyle"
+                       layoutX="40.0"
+                       layoutY="220.0"/>
+            </children>
+        </Pane>
+
+        <!--
+          Used for pop-up messages (score, etc.) and the GameOverPanel.
+          The controller decides when this is visible.
+        -->
+        <Group fx:id="groupNotification" layoutX="14.0" layoutY="203.0">
+            <children>
+                <VBox alignment="CENTER">
+                    <children>
+                        <GameOverPanel fx:id="gameOverPanel"/>
+                    </children>
+                </VBox>
+            </children>
+        </Group>
+    </children>
+
+    <!-- Global styles for this scene (board border, fonts, colours, etc.). -->
     <stylesheets>
         <URL value="@window_style.css"/>
     </stylesheets>
