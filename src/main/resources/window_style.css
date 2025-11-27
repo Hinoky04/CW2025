@@ -70,3 +70,18 @@
     -fx-fill: yellow;
     -fx-text-fill: yellow;
 }
+
+/* Danger zone: used when the stack is close to the top. */
+/* Danger zone: subtle red highlight around the board. */
+.dangerBoard {
+    -fx-border-color: red;
+    -fx-border-width: 3;
+    -fx-effect: dropshadow(gaussian, rgba(255,0,0,0.6), 15, 0.4, 0, 0);
+}
+
+
+.dangerText {
+    -fx-fill: red;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
