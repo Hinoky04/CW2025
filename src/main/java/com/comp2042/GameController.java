@@ -24,16 +24,18 @@ public class GameController implements InputEventListener {
     }
 
     /**
-     * One-time setup: create first brick, hook GUI listeners, bind score.
+     * One-time setup: create first brick, hook GUI listeners, bind HUD fields.
      */
     private void initialiseGame() {
         board.createNewBrick();
         guiController.setEventListener(this);
         guiController.initGameView(board.getBoardMatrix(), board.getViewData());
 
-        // Bind score and level to the GUI.
-        guiController.bindScore(board.getScore().scoreProperty());
-        guiController.bindLevel(board.getScore().levelProperty());
+        // Bind score / level / combo from the model to the HUD.
+        Score score = board.getScore();
+        guiController.bindScore(score.scoreProperty());
+        guiController.bindLevel(score.levelProperty());
+        guiController.bindCombo(score.comboProperty());
     }
 
     @Override
@@ -56,18 +58,24 @@ public class GameController implements InputEventListener {
     /**
      * Runs when the falling brick can no longer move down.
      * - merges brick into the background
-     * - clears full rows and updates score
+     * - clears full rows and updates score/combo/level
      * - spawns the next brick or ends the game if there is no space
      */
     private ClearRow handleBrickLanded() {
         board.mergeBrickToBackground();
 
         ClearRow clearRow = board.clearRows();
-        if (clearRow != null) {
-            board.getScore().registerLinesCleared(
+        Score score = board.getScore();
+
+        if (clearRow != null && clearRow.getLinesRemoved() > 0) {
+            // Landing with a clear: update combo + score + level.
+            score.registerLinesCleared(
                     clearRow.getLinesRemoved(),
                     clearRow.getScoreBonus()
             );
+        } else {
+            // Landing with no clear: break the combo chain.
+            score.registerLandingWithoutClear();
         }
 
         // true means new brick could not be placed → game over
@@ -78,7 +86,6 @@ public class GameController implements InputEventListener {
         guiController.refreshGameBackground(board.getBoardMatrix());
         return clearRow;
     }
-
 
     @Override
     public ViewData onLeftEvent(MoveEvent event) {

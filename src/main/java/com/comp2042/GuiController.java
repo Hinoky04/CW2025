@@ -49,13 +49,16 @@ public class GuiController implements Initializable {
     private GameOverPanel gameOverPanel; // overlay shown when the game ends
 
     @FXML
-    private Pane pauseOverlay;           // overlay shown when the game is paused (Phase 4)
+    private Pane pauseOverlay;           // overlay shown when the game is paused
 
     @FXML
     private Text scoreText;              // shows current score in the HUD
 
     @FXML
     private Text levelText;              // shows current level in the HUD
+
+    @FXML
+    private Text comboText;              // shows current combo multiplier
 
     // Background cells (for the board)
     private Rectangle[][] displayMatrix;
@@ -69,7 +72,7 @@ public class GuiController implements Initializable {
     // Timer for automatic down movement
     private Timeline timeLine;
 
-    // Single source of truth for the current game state (used in Phase 3 and 4).
+    // Single source of truth for the current game state.
     private GameState gameState = GameState.PLAYING;
 
     // Extra flags kept for possible UI bindings later.
@@ -77,9 +80,8 @@ public class GuiController implements Initializable {
     private final BooleanProperty isGameOver = new SimpleBooleanProperty(false);
 
     /**
-     * Phase 4 helper:
-     * Whenever gameState changes, keep UI flags and overlays in sync here.
-     * This keeps state changes in one place and makes it easier to add more states later.
+     * Central helper for changing game state.
+     * Keeps internal flags and overlays in sync.
      */
     private void setGameState(GameState newState) {
         gameState = newState;
@@ -96,7 +98,7 @@ public class GuiController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // Load custom digital font if available (used for score etc.)
+        // Load custom digital font if available (used for score HUD etc.)
         URL fontUrl = getClass().getClassLoader().getResource("digital.ttf");
         if (fontUrl != null) {
             Font.loadFont(fontUrl.toExternalForm(), 38);
@@ -109,16 +111,13 @@ public class GuiController implements Initializable {
         // Handle keyboard input for movement, pause, and new game
         gamePanel.setOnKeyPressed(this::handleKeyPressed);
 
-        // Old behaviour before Phase 4:
-        // gameOverPanel.setVisible(false);
-
-        // New behaviour: centralise state and overlays in setGameState.
+        // Use centralised state helper so overlays stay consistent.
         setGameState(GameState.PLAYING);
     }
 
     /**
      * Centralised key handler.
-     * Phase 4: now also handles pause (P) and new game (N) outside of movement.
+     * Handles pause (P) and new game (N) in addition to movement.
      */
     private void handleKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
@@ -164,20 +163,6 @@ public class GuiController implements Initializable {
             moveDown(new MoveEvent(EventType.DOWN, EventSource.USER));
             event.consume();
         }
-
-        // Old handleKeyPressed (Phase 3) for reference:
-        // - Only checked canHandleInput() at the top
-        // - N was handled after the movement block
-        //
-        // private void handleKeyPressed(KeyEvent event) {
-        //     if (canHandleInput()) {
-        //         ...
-        //     }
-        //     if (event.getCode() == KeyCode.N) {
-        //         newGame(null);
-        //         event.consume();
-        //     }
-        // }
     }
 
     /**
@@ -192,7 +177,7 @@ public class GuiController implements Initializable {
 
     /**
      * Called by the game logic to set up the initial board and piece view.
-     * Refactored in Phase 2/3 into smaller helpers.
+     * Split into smaller helpers for readability.
      */
     public void initGameView(int[][] boardMatrix, ViewData brick) {
         initBackgroundCells(boardMatrix);
@@ -210,7 +195,7 @@ public class GuiController implements Initializable {
                 Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
                 cell.setFill(Color.TRANSPARENT);
                 displayMatrix[row][col] = cell;
-                // We skip the hidden top rows when adding to the visible grid
+                // Skip hidden top rows when adding to the visible grid
                 gamePanel.add(cell, col, row - HIDDEN_TOP_ROWS);
             }
         }
@@ -377,6 +362,16 @@ public class GuiController implements Initializable {
     }
 
     /**
+     * Binds the combo property from the model to the HUD.
+     * Shows "Combo xN" so the player can see when a chain is building or broken.
+     */
+    public void bindCombo(IntegerProperty comboProperty) {
+        if (comboText != null) {
+            comboText.textProperty().bind(comboProperty.asString("Combo x%d"));
+        }
+    }
+
+    /**
      * Adjusts the timeline speed when the level changes.
      * Higher level = faster drop.
      */
@@ -392,23 +387,16 @@ public class GuiController implements Initializable {
 
     /**
      * Game over handler.
-     * Old behaviour set flags manually; now we delegate to setGameState.
+     * Uses setGameState so flags and overlays stay consistent.
      */
     public void gameOver() {
         timeLine.stop();
-
-        // Old version for reference:
-        // gameOverPanel.setVisible(true);
-        // gameState = GameState.GAME_OVER;
-        // isGameOver.set(true);
-        // isPause.set(false);
-
         setGameState(GameState.GAME_OVER);
     }
 
     /**
      * Starts a new game from the UI.
-     * Old version reset flags by hand; now uses setGameState.
+     * Uses setGameState so flags and overlays stay consistent.
      */
     public void newGame(javafx.event.ActionEvent actionEvent) {
         timeLine.stop();
@@ -416,17 +404,11 @@ public class GuiController implements Initializable {
         gamePanel.requestFocus();
         timeLine.play();
 
-        // Old version for reference:
-        // gameOverPanel.setVisible(false);
-        // gameState = GameState.PLAYING;
-        // isPause.set(false);
-        // isGameOver.set(false);
-
         setGameState(GameState.PLAYING);
     }
 
     /**
-     * Phase 4: core pause/resume behaviour.
+     * Core pause/resume behaviour.
      * PLAYING -> PAUSED pauses the timeline and shows overlay.
      * PAUSED  -> PLAYING resumes the timeline and hides overlay.
      */
@@ -447,9 +429,6 @@ public class GuiController implements Initializable {
      * Simply calls the core togglePause() method.
      */
     public void pauseGame(javafx.event.ActionEvent actionEvent) {
-        // Old version only re-focused the gamePanel and did not really pause.
-        // gamePanel.requestFocus();
-
         togglePause();
     }
 }

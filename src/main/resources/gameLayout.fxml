@@ -35,7 +35,10 @@
                   text="Score 0"/>
             <Text fx:id="levelText"
                   text="Level 1"/>
+            <Text fx:id="comboText"
+                  text="Combo x0"/>
         </VBox>
+
 
         <!--
           Simple pause overlay.
