@@ -30,7 +30,10 @@ public class GameController implements InputEventListener {
         board.createNewBrick();
         guiController.setEventListener(this);
         guiController.initGameView(board.getBoardMatrix(), board.getViewData());
+
+        // Bind score and level to the GUI.
         guiController.bindScore(board.getScore().scoreProperty());
+        guiController.bindLevel(board.getScore().levelProperty());
     }
 
     @Override
@@ -60,8 +63,11 @@ public class GameController implements InputEventListener {
         board.mergeBrickToBackground();
 
         ClearRow clearRow = board.clearRows();
-        if (clearRow != null && clearRow.getLinesRemoved() > 0) {
-            board.getScore().add(clearRow.getScoreBonus());
+        if (clearRow != null) {
+            board.getScore().registerLinesCleared(
+                    clearRow.getLinesRemoved(),
+                    clearRow.getScoreBonus()
+            );
         }
 
         // true means new brick could not be placed → game over
@@ -72,6 +78,7 @@ public class GameController implements InputEventListener {
         guiController.refreshGameBackground(board.getBoardMatrix());
         return clearRow;
     }
+
 
     @Override
     public ViewData onLeftEvent(MoveEvent event) {

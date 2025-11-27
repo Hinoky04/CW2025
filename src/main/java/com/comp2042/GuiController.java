@@ -16,6 +16,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.util.Duration;
 
 import java.net.URL;
@@ -49,6 +50,12 @@ public class GuiController implements Initializable {
 
     @FXML
     private Pane pauseOverlay;           // overlay shown when the game is paused (Phase 4)
+
+    @FXML
+    private Text scoreText;              // shows current score in the HUD
+
+    @FXML
+    private Text levelText;              // shows current level in the HUD
 
     // Background cells (for the board)
     private Rectangle[][] displayMatrix;
@@ -348,10 +355,39 @@ public class GuiController implements Initializable {
     }
 
     /**
-     * TODO (Phase 4+): Bind score property to a label in the UI.
+     * Binds the score property from the model to the score text in the HUD.
      */
-    public void bindScore(IntegerProperty integerProperty) {
-        // Implementation will be added when score label is wired up
+    public void bindScore(IntegerProperty scoreProperty) {
+        if (scoreText != null) {
+            scoreText.textProperty().bind(scoreProperty.asString("Score %d"));
+        }
+    }
+
+    /**
+     * Binds the level property from the model to the HUD and updates drop speed.
+     */
+    public void bindLevel(IntegerProperty levelProperty) {
+        if (levelText != null) {
+            levelText.textProperty().bind(levelProperty.asString("Level %d"));
+        }
+
+        // When level changes, adjust the drop speed.
+        levelProperty.addListener((obs, oldLevel, newLevel) ->
+                onLevelChanged(newLevel.intValue()));
+    }
+
+    /**
+     * Adjusts the timeline speed when the level changes.
+     * Higher level = faster drop.
+     */
+    private void onLevelChanged(int newLevel) {
+        if (timeLine == null) {
+            return;
+        }
+
+        // Simple curve: each level is roughly 15% faster than the previous one.
+        double rate = 1.0 + (newLevel - 1) * 0.15;
+        timeLine.setRate(rate);
     }
 
     /**
