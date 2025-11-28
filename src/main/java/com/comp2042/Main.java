@@ -71,6 +71,9 @@ public class Main extends Application {
             Parent root = loader.load();
             GuiController guiController = loader.getController();
 
+            // Allow GUI to navigate back to the main menu.
+            guiController.init(this);
+
             Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
             primaryStage.setScene(scene);
             primaryStage.show();

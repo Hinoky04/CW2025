@@ -25,16 +25,16 @@ import java.util.ResourceBundle;
 
 public class GuiController implements Initializable {
 
-    // Size of each cell (brick) in the grid, in pixels
+    // Size of each cell (brick) in the grid, in pixels.
     private static final int BRICK_SIZE = 20;
 
-    // Number of hidden rows at the top of the board (spawn area)
+    // Number of hidden rows at the top of the board (spawn area).
     private static final int HIDDEN_TOP_ROWS = 2;
 
-    // Y offset for the brickPanel so it lines up visually with the grid
+    // Y offset for the brickPanel so it lines up visually with the grid.
     private static final int BRICK_PANEL_Y_OFFSET = -42;
 
-    // How often the piece falls automatically (milliseconds)
+    // How often the piece falls automatically (milliseconds).
     private static final int FALL_INTERVAL_MS = 400;
 
     // How many top visible rows are considered "danger zone".
@@ -70,16 +70,16 @@ public class GuiController implements Initializable {
     @FXML
     private Text dangerText;             // warning text when stack is near the top
 
-    // Background cells (for the board)
+    // Background cells (for the board).
     private Rectangle[][] displayMatrix;
 
-    // Current falling piece cells
+    // Current falling piece cells.
     private Rectangle[][] rectangles;
 
-    // Listener that sends user input events to the game logic
+    // Listener that sends user input events to the game logic.
     private InputEventListener eventListener;
 
-    // Timer for automatic down movement
+    // Timer for automatic down movement.
     private Timeline timeLine;
 
     // Single source of truth for the current game state.
@@ -91,6 +91,17 @@ public class GuiController implements Initializable {
 
     // Tracks whether we are currently in the danger zone.
     private final BooleanProperty isDanger = new SimpleBooleanProperty(false);
+
+    // Reference back to the Main app so the game screen can return to the main menu.
+    private Main mainApp;
+
+    /**
+     * Called from Main.showGameScene() so this controller can access
+     * navigation methods like showMainMenu().
+     */
+    void init(Main mainApp) {
+        this.mainApp = mainApp;
+    }
 
     /**
      * Central helper for changing game state.
@@ -108,26 +119,25 @@ public class GuiController implements Initializable {
             gameOverPanel.setVisible(newState == GameState.GAME_OVER);
         }
 
-        // New: once the game is over, we hide the danger warning.
+        // Once the game is over, we hide the danger warning.
         if (newState == GameState.GAME_OVER) {
             setDanger(false);
         }
     }
 
-
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // Load custom digital font if available (used for score HUD etc.)
+        // Load custom digital font if available (used for score HUD etc.).
         URL fontUrl = getClass().getClassLoader().getResource("digital.ttf");
         if (fontUrl != null) {
             Font.loadFont(fontUrl.toExternalForm(), 38);
         }
 
-        // Allow the game panel to receive keyboard focus and request it initially
+        // Allow the game panel to receive keyboard focus and request it initially.
         gamePanel.setFocusTraversable(true);
         gamePanel.requestFocus();
 
-        // Handle keyboard input for movement, pause, and new game
+        // Handle keyboard input for movement, pause, and new game.
         gamePanel.setOnKeyPressed(this::handleKeyPressed);
 
         // Use centralised state helper so overlays stay consistent.
@@ -139,26 +149,26 @@ public class GuiController implements Initializable {
 
     /**
      * Centralised key handler.
-     * Handles pause (P) and new game (N) in addition to movement.
+     * Handles pause (P / ESC) and new game (N) in addition to movement.
      */
     private void handleKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
 
-        // P toggles pause/resume even when already paused
-        if (code == KeyCode.P) {
+        // P or ESC toggle pause/resume even when already paused.
+        if (code == KeyCode.P || code == KeyCode.ESCAPE) {
             togglePause();
             event.consume();
             return;
         }
 
-        // N starts a new game at any time
+        // N starts a new game at any time.
         if (code == KeyCode.N) {
             newGame(null);
             event.consume();
             return;
         }
 
-        // Movement and rotation only allowed while playing
+        // Movement and rotation only allowed while playing.
         if (!canHandleInput()) {
             return;
         }
@@ -194,9 +204,6 @@ public class GuiController implements Initializable {
         return gameState == GameState.PLAYING;
     }
 
-    // --- Old initGameView kept as comment for marker reference ----------------
-    // public void initGameView(int[][] boardMatrix, ViewData brick) { ... }
-
     /**
      * Called by the game logic to set up the initial board and piece view.
      * Split into smaller helpers for readability.
@@ -217,7 +224,7 @@ public class GuiController implements Initializable {
                 Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
                 cell.setFill(Color.TRANSPARENT);
                 displayMatrix[row][col] = cell;
-                // Skip hidden top rows when adding to the visible grid
+                // Skip hidden top rows when adding to the visible grid.
                 gamePanel.add(cell, col, row - HIDDEN_TOP_ROWS);
             }
         }
@@ -237,7 +244,7 @@ public class GuiController implements Initializable {
                 brickPanel.add(cell, col, row);
             }
         }
-        // Position the brickPanel according to the starting brick position
+        // Position the brickPanel according to the starting brick position.
         updateBrickPanelPosition(brick);
     }
 
@@ -343,7 +350,7 @@ public class GuiController implements Initializable {
         if (gameState == GameState.PLAYING) {
             DownData downData = eventListener.onDownEvent(event);
 
-            // If a row was cleared, show a score notification
+            // If a row was cleared, show a score notification.
             if (downData.getClearRow() != null &&
                     downData.getClearRow().getLinesRemoved() > 0) {
 
@@ -353,11 +360,11 @@ public class GuiController implements Initializable {
                 notificationPanel.showScore(groupNotification.getChildren());
             }
 
-            // Update the brick's position/shape
+            // Update the brick's position/shape.
             refreshBrick(downData.getViewData());
         }
 
-        // Keep keyboard focus on the game panel
+        // Keep keyboard focus on the game panel.
         gamePanel.requestFocus();
     }
 
@@ -456,6 +463,28 @@ public class GuiController implements Initializable {
      */
     public void pauseGame(javafx.event.ActionEvent actionEvent) {
         togglePause();
+    }
+
+    /**
+     * Called from the pause overlay "Resume" button.
+     */
+    @FXML
+    private void handleResumeFromPause() {
+        togglePause();
+    }
+
+    /**
+     * Called from the pause overlay "Main Menu" button.
+     * Stops the game loop and asks Main to show the main menu scene.
+     */
+    @FXML
+    private void handleBackToMenuFromPause() {
+        if (timeLine != null) {
+            timeLine.stop();
+        }
+        if (mainApp != null) {
+            mainApp.showMainMenu();
+        }
     }
 
     /**
