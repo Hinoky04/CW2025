@@ -22,15 +22,15 @@
         </center>
     </BorderPane>
 
-    <!-- Simple HUD showing score, level, combo and danger. -->
-    <!-- Values are bound in GuiController.bindScore/Level/Combo(). -->
-    <VBox layoutX="260.0" layoutY="40.0" spacing="5.0">
-        <Text fx:id="scoreText" text="Score 0"/>
-        <Text fx:id="levelText" text="Level 1"/>
-        <Text fx:id="comboText" text="Combo x0"/>
+    <!-- Compact HUD card showing score, level, combo and danger state.
+         GuiController still binds these Text nodes; only layout / style changes here. -->
+    <VBox layoutX="260.0" layoutY="25.0" spacing="6.0" styleClass="hud-box">
+        <Text fx:id="scoreText" text="Score 0" styleClass="hud-value"/>
+        <Text fx:id="levelText" text="Level 1" styleClass="hud-value"/>
+        <Text fx:id="comboText" text="Combo x0" styleClass="hud-value"/>
         <Text fx:id="dangerText" text="DANGER!"
               visible="false"
-              styleClass="dangerText"/>
+              styleClass="dangerText hud-danger"/>
     </VBox>
 
     <!-- Simple pause overlay.
