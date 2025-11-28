@@ -420,12 +420,23 @@ public class GuiController implements Initializable {
 
     /**
      * Game over handler.
-     * Uses setGameState so flags and overlays stay consistent.
+     * Uses setGameState so flags and overlays stay consistent,
+     * and clears the falling brick so it is not drawn on top of the final board.
      */
     public void gameOver() {
-        timeLine.stop();
+        if (timeLine != null) {
+            timeLine.stop();
+        }
+
         setGameState(GameState.GAME_OVER);
+
+        // Once the game is over, we no longer need the falling brick visuals.
+        // The last brick has already been merged into the background.
+        if (brickPanel != null) {
+            brickPanel.getChildren().clear();
+        }
     }
+
 
     /**
      * Starts a new game from the UI.

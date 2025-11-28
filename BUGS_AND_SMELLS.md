@@ -28,6 +28,18 @@ Status tags: **[FIXED]**, **[TODO]**, **[WONTFIX]**.
 
 ---
 
+### BUG-03 – Extra falling brick visible after game over **[FIXED – Phase 5.2]**
+
+- Symptom: After game over, an extra copy of the last brick appeared on top of the final board state.
+- Root cause: `GameController.handleBrickLanded()` merged the brick and then called `board.createNewBrick()`.  
+  When `createNewBrick()` reported game over, the GUI still kept drawing the “current” falling brick in `brickPanel`.
+- Fix: In `GuiController.gameOver()`:
+  - Stop the Timeline safely.
+  - Clear `brickPanel.getChildren()` so the falling brick visuals are removed once the brick is merged into the background.
+- Result: Final board state is shown correctly with no duplicate brick after game over.
+
+---
+
 ### TEST-01 – Wrong assumption about line clearing **[FIXED]**
 
 - Area: `SimpleBoard.clearRows()` and `SimpleBoardTest.clearRows_removesSingleFullRow`.
@@ -43,17 +55,17 @@ Status tags: **[FIXED]**, **[TODO]**, **[WONTFIX]**.
 
 - Original issue: `pauseGame(ActionEvent)` only called `gamePanel.requestFocus()` and did not change `isPause` / Timeline state.
 - Impact: Pause button existed in UI but did not pause the game.
-- Current state: Replaced by proper pause/resume using `GameState` and a pause overlay (handled in Phase 4).
+- Current state: Replaced by proper pause/resume using `GameState` and a pause overlay (handled in Phase 4 and extended in Phase 5 with a pause menu).
 
 ---
 
-### SMELL-02 – Unused score binding in `GuiController.bindScore(IntegerProperty)` **[FIXED or REMOVE – check current code]**
+### SMELL-02 – Unused score binding in `GuiController.bindScore(IntegerProperty)` **[FIXED – HUD binding]**
 
-- Original issue: Method body was empty, suggesting an unfinished feature.
+- Original issue: `bindScore(...)` was empty, suggesting an unfinished feature.
 - Impact: Unclear how score should be displayed/updated from the model.
-- Current plan:
-  - If you now bind score to the HUD, mark as **[FIXED]** and note which method does it.
-  - If the method is still unused, delete it and mark this smell as **[FIXED – removed unused method]**.
+- Fix: `GuiController.bindScore(IntegerProperty)` now binds the model’s `scoreProperty` to the HUD `scoreText`:
+  - `scoreText.textProperty().bind(scoreProperty.asString("Score %d"));`
+- Result: Score is always in sync with the model and updated automatically in the HUD.
 
 ---
 
@@ -61,16 +73,10 @@ Status tags: **[FIXED]**, **[TODO]**, **[WONTFIX]**.
 
 - Evidence: Constructor takes `(int width, int height)` but always creates `new int[ROWS][COLUMNS]`.
 - Impact: Board size is effectively hard-coded; parameters are misleading and hurt reuse.
-- Plan: In a later refactor phase:
+- Plan (later phase):
   - Store `width` / `height` in fields.
   - Allocate the backing array using those values or remove the parameters if dynamic sizing is not needed.
 
 ---
 
-### SMELL-04 – Tight coupling between `GameController` and `SimpleBoard` **[TODO – future refactor]**
-
-- Evidence: `GameController` directly constructs `new SimpleBoard(ROWS, COLUMNS)` instead of using the `Board` interface.
-- Impact: Harder to swap in another `Board` implementation or use a fake board in unit tests.
-- Plan (later phase):
-  - Introduce a `Board` factory or inject a `Board` via constructor.
-  - Keep `GameController` depending on the `Board` interface only.
+### SMELL-04 – Tight coupling between `GameController` and `SimpleBoard` **[TOD]()**
