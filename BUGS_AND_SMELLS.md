@@ -1,45 +1,76 @@
-# Initial Bug & Code Smell List (Phase 1)
+# Bug & Code Smell Log
 
-## Behaviour / Bug observations
+Short internal log to support README and demo video.  
+Status tags: **[FIXED]**, **[TODO]**, **[WONTFIX]**.
 
-- BUG-01: Pieces spawn too low (middle instead of near top) **[Fixed in Phase 3.5]**
-  - Original description: New bricks appear around the middle of the visible board instead of near the top, reducing reaction time.
-  - Steps (original): Start a new game and observe the initial spawn position.
-  - Root cause: `SimpleBoard.createNewBrick()` used a fixed offset `(SPAWN_X, SPAWN_Y)` with `SPAWN_Y = 10` on a 25-row board, so pieces spawned roughly in the middle.
-  - Fix: In `SimpleBoard` changed `SPAWN_Y` from `10` to `1` so new bricks start near the top/hidden rows instead of in the middle.
-  - Regression test: Added `SimpleBoardTest.createNewBrick_spawnsNearTop()` which asserts:
-    - `createNewBrick()` does not collide on an empty board, and
-    - the spawn Y position is near the top (`spawnY <= 2`).
-  - Result: Test now passes and the first piece appears near the top of the board, giving the player more reaction time.
+---
 
-- BUG-02: Piece cannot rotate at the left/right wall **(fixed in phase3.5-bugfix)**
-  - Description: When a piece is tight against the left or right border, rotation is often blocked even if it would still fit.
-  - Steps: Move a piece fully to the wall and press rotate.
-  - Original cause: `SimpleBoard.rotateLeftBrick()` only tried rotating in place; any out-of-bounds cell was treated as a collision.
-  - Fix: Added a small "wall-kick" in `rotateLeftBrick()` – try rotation in place, then at x-1 and x+1. This allows rotation when the piece is next to a wall but still within the board.
+## 1. Behaviour / Bug observations
 
+### BUG-01 – Pieces spawn too low (middle instead of near top) **[FIXED – Phase 3.5]**
 
-## Code smells (from reading the code)
+- Symptom: New bricks appeared around the middle of the visible board instead of near the top, reducing reaction time.
+- Root cause: `SimpleBoard.createNewBrick()` used `(SPAWN_X, SPAWN_Y)` with `SPAWN_Y = 10` on a 25-row board.
+- Fix: Changed `SPAWN_Y` from `10` to `1` so new bricks start near the top/hidden rows.
+- Regression test: `SimpleBoardTest.createNewBrick_spawnsNearTop()`:
+  - `createNewBrick()` does not collide on an empty board.
+  - `spawnY <= 2`.
 
-- SMELL-01: Incomplete pause feature in `GuiController`
-  - Evidence: `pauseGame(ActionEvent)` only calls `gamePanel.requestFocus()` and does not change isPause / timeLine state.
-  - Impact: Pause button exists in UI but does not actually pause the game; confusing for users and maintainers.
+---
 
-- SMELL-02: Unused/empty score binding in `GuiController.bindScore(IntegerProperty)`
-  - Evidence: Method body is empty.
-  - Impact: Suggests an unfinished feature; unclear how score should be displayed or updated from the model.
+### BUG-02 – Piece cannot rotate at the left/right wall **[FIXED – Phase 3.5 bugfix]**
 
-- SMELL-03: `SimpleBoard` ignores constructor parameters
-  - Evidence: Constructor takes `(int width, int height)` but internally always creates `new int[ROWS][COLUMNS]`.
-  - Impact: Board size is effectively hard-coded; parameters are misleading and make the class harder to reuse.
+- Symptom: When a piece was tight against the left or right border, rotation was blocked even when it should fit.
+- Root cause: `SimpleBoard.rotateLeftBrick()` only tried rotation in place; any out-of-bounds cell was treated as a collision.
+- Fix: Added a simple “wall-kick” in `rotateLeftBrick()`:
+  - Try rotation in place, then at `x-1` and `x+1`.
+  - Allows rotation next to a wall while still within the board.
 
-- SMELL-04: Tight coupling between `GameController` and `SimpleBoard`
-  - Evidence: `GameController` directly constructs `new SimpleBoard(ROWS, COLUMNS)` instead of using the `Board` interface.
-  - Impact: Makes it harder to swap in another `Board` implementation or write unit tests with a fake board.
+---
 
-### TEST-01: Wrong assumption about line clearing (fixed)
+### TEST-01 – Wrong assumption about line clearing **[FIXED]**
 
 - Area: `SimpleBoard.clearRows()` and `SimpleBoardTest.clearRows_removesSingleFullRow`.
-- Initial assumption: After clearing a full row, the bottom row would become completely empty (all zeros).
-- What really happens: The implementation correctly lets rows above fall down, so a block from the row above can end up in the bottom row.
-- Fix: Updated the test to expect the falling behaviour and left the old assertion commented in the test file as documentation.
+- Initial test assumption: After clearing a full row, the bottom row should become all zeros.
+- Reality: Implementation lets rows above fall down, so blocks from the row above can land in the bottom row.
+- Fix: Updated the test to expect falling behaviour; left the old assertion commented as documentation.
+
+---
+
+## 2. Code smells / refactoring notes
+
+### SMELL-01 – Incomplete pause feature in `GuiController` **[FIXED – replaced by GameState pause]**
+
+- Original issue: `pauseGame(ActionEvent)` only called `gamePanel.requestFocus()` and did not change `isPause` / Timeline state.
+- Impact: Pause button existed in UI but did not pause the game.
+- Current state: Replaced by proper pause/resume using `GameState` and a pause overlay (handled in Phase 4).
+
+---
+
+### SMELL-02 – Unused score binding in `GuiController.bindScore(IntegerProperty)` **[FIXED or REMOVE – check current code]**
+
+- Original issue: Method body was empty, suggesting an unfinished feature.
+- Impact: Unclear how score should be displayed/updated from the model.
+- Current plan:
+  - If you now bind score to the HUD, mark as **[FIXED]** and note which method does it.
+  - If the method is still unused, delete it and mark this smell as **[FIXED – removed unused method]**.
+
+---
+
+### SMELL-03 – `SimpleBoard` ignores constructor parameters **[TODO – future refactor]**
+
+- Evidence: Constructor takes `(int width, int height)` but always creates `new int[ROWS][COLUMNS]`.
+- Impact: Board size is effectively hard-coded; parameters are misleading and hurt reuse.
+- Plan: In a later refactor phase:
+  - Store `width` / `height` in fields.
+  - Allocate the backing array using those values or remove the parameters if dynamic sizing is not needed.
+
+---
+
+### SMELL-04 – Tight coupling between `GameController` and `SimpleBoard` **[TODO – future refactor]**
+
+- Evidence: `GameController` directly constructs `new SimpleBoard(ROWS, COLUMNS)` instead of using the `Board` interface.
+- Impact: Harder to swap in another `Board` implementation or use a fake board in unit tests.
+- Plan (later phase):
+  - Introduce a `Board` factory or inject a `Board` via constructor.
+  - Keep `GameController` depending on the `Board` interface only.
