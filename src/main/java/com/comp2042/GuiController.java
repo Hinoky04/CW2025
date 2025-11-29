@@ -30,20 +30,26 @@ import java.util.ResourceBundle;
  */
 public class GuiController implements Initializable {
 
-    // Size of each cell (brick) in pixels.
+    // Size of each cell (brick) in the grid, in pixels
     private static final int BRICK_SIZE = 20;
 
-    // Number of hidden rows at the top (spawn area not visible).
+    // Number of hidden rows at the top of the board (spawn area)
     private static final int HIDDEN_TOP_ROWS = 2;
 
-    // Offset so the brick panel lines up visually with the board.
+    // Y offset for the brickPanel so it lines up visually with the grid
     private static final int BRICK_PANEL_Y_OFFSET = -42;
 
-    // Base drop interval in milliseconds.
-    private static final int FALL_INTERVAL_MS = 400;
+    // === Configurable values (defaults tuned roughly for Classic mode) ===
 
-    // How many top visible rows count as "danger zone".
-    private static final int DANGER_VISIBLE_ROWS = 3;
+    // Base fall interval (ms) before level scaling is applied.
+    private int fallIntervalMs = 400;
+
+    // How much faster each level becomes (e.g. 0.15 = +15% per level).
+    private double levelSpeedFactor = 0.15;
+
+    // How many top visible rows are considered "danger zone".
+    private int dangerVisibleRows = 3;
+
 
     @FXML
     private GridPane gamePanel;          // main board grid
@@ -343,7 +349,7 @@ public class GuiController implements Initializable {
      */
     private void startAutoDropTimer() {
         timeLine = new Timeline(new KeyFrame(
-                Duration.millis(FALL_INTERVAL_MS),
+                Duration.millis(fallIntervalMs),
                 ae -> moveDown(new MoveEvent(EventType.DOWN, EventSource.THREAD))
         ));
         timeLine.setCycleCount(Timeline.INDEFINITE);
@@ -463,6 +469,19 @@ public class GuiController implements Initializable {
     }
 
     /**
+     * Applies a GameConfig so the GUI uses mode-specific values.
+     * Called once from GameController when a new game starts.
+     */
+    public void applyConfig(GameConfig config) {
+        if (config == null) {
+            return;
+        }
+        this.fallIntervalMs = config.getBaseFallIntervalMs();
+        this.levelSpeedFactor = config.getLevelSpeedFactor();
+        this.dangerVisibleRows = config.getDangerVisibleRows();
+    }
+
+    /**
      * Binds the score property from the model to the score text in the HUD.
      */
     public void bindScore(IntegerProperty scoreProperty) {
@@ -502,9 +521,10 @@ public class GuiController implements Initializable {
             return;
         }
 
-        // Simple curve: each level is roughly 15% faster than the previous one.
-        double rate = 1.0 + (newLevel - 1) * 0.15;
+        // Curve is driven by GameConfig; each level multiplies speed by this factor.
+        double rate = 1.0 + (newLevel - 1) * levelSpeedFactor;
         timeLine.setRate(rate);
+
     }
 
     /**
@@ -597,7 +617,7 @@ public class GuiController implements Initializable {
         boolean found = false;
 
         int visibleRows = board.length - HIDDEN_TOP_ROWS;
-        int limit = Math.min(DANGER_VISIBLE_ROWS, visibleRows);
+        int limit = Math.min(dangerVisibleRows, visibleRows);
 
         for (int row = HIDDEN_TOP_ROWS; row < HIDDEN_TOP_ROWS + limit; row++) {
             for (int col = 0; col < board[row].length; col++) {

@@ -17,14 +17,17 @@ public class GameController implements InputEventListener {
     // Selected game mode for this run (Classic, Survival, etc.).
     private final GameMode gameMode;
 
+    // Immutable configuration derived from the chosen mode.
+    private final GameConfig config;
+
     /**
      * Create a new game controller and use the default board size
-     * for the selected mode. Behaviour is still the same for all
-     * modes at this stage; rules will diverge in later steps.
+     * for the selected mode. Behaviour diverges via GameConfig values.
      */
     public GameController(GuiController guiController, GameMode gameMode) {
         this.guiController = guiController;
         this.gameMode = gameMode;
+        this.config = gameMode.getConfig();
         this.board = new SimpleBoard(BOARD_ROWS, BOARD_COLUMNS);
         initialiseGame();
     }
@@ -36,12 +39,15 @@ public class GameController implements InputEventListener {
         board.createNewBrick();
         guiController.setEventListener(this);
 
-        // Tell the GUI which mode this run is using so it can restart correctly.
+        // Tell GUI which mode we are running so restart uses the same mode.
         guiController.setGameMode(gameMode);
+
+        // Apply mode-specific config (speed curve, danger rows, etc.).
+        guiController.applyConfig(config);
 
         guiController.initGameView(board.getBoardMatrix(), board.getViewData());
 
-        // Bind score / level / combo from the model to the HUD.
+        // Bind score/level/combo from the model to the HUD.
         Score score = board.getScore();
         guiController.bindScore(score.scoreProperty());
         guiController.bindLevel(score.levelProperty());
@@ -104,7 +110,7 @@ public class GameController implements InputEventListener {
     }
 
     @Override
-       public ViewData onRightEvent(MoveEvent event) {
+    public ViewData onRightEvent(MoveEvent event) {
         board.moveBrickRight();
         return board.getViewData();
     }
@@ -118,8 +124,8 @@ public class GameController implements InputEventListener {
     @Override
     public void createNewGame() {
         // Reset the board state for completeness.
-        // This method is no longer used for Restart: restart now reloads
-        // the whole game scene via GuiController.restartSameMode().
+        // Restart from menu now reloads the whole scene via GuiController,
+        // but this is kept for the 'N' shortcut inside the game.
         board.newGame();
 
         // Update background in case someone calls this in the future.
