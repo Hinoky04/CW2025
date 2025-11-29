@@ -140,6 +140,12 @@ public class GuiController implements Initializable {
         // Handle keyboard input for movement, pause, and new game.
         gamePanel.setOnKeyPressed(this::handleKeyPressed);
 
+        // Wire game-over panel buttons to restart and main menu actions.
+        if (gameOverPanel != null) {
+            gameOverPanel.setOnRestart(() -> newGame(null));
+            gameOverPanel.setOnMainMenu(this::backToMainMenu);
+        }
+
         // Use centralised state helper so overlays stay consistent.
         setGameState(GameState.PLAYING);
 
@@ -149,19 +155,26 @@ public class GuiController implements Initializable {
 
     /**
      * Centralised key handler.
-     * Handles pause (P / ESC) and new game (N) in addition to movement.
+     * Handles pause (P / ESC), new game (N),
+     * and forwards movement only while playing.
      */
     private void handleKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
 
-        // P or ESC toggle pause/resume even when already paused.
+        // Special handling when the game is already over.
+        if (gameState == GameState.GAME_OVER) {
+            handleGameOverKey(event);
+            return;
+        }
+
+        // P or ESC toggle pause/resume (only when not in GAME_OVER).
         if (code == KeyCode.P || code == KeyCode.ESCAPE) {
             togglePause();
             event.consume();
             return;
         }
 
-        // N starts a new game at any time.
+        // N starts a new game at any time (same mode).
         if (code == KeyCode.N) {
             newGame(null);
             event.consume();
@@ -193,6 +206,22 @@ public class GuiController implements Initializable {
 
         if (code == KeyCode.DOWN || code == KeyCode.S) {
             moveDown(new MoveEvent(EventType.DOWN, EventSource.USER));
+            event.consume();
+        }
+    }
+
+    /**
+     * Key handling when the game has finished.
+     * R = restart same mode, M or ESC = back to main menu.
+     */
+    private void handleGameOverKey(KeyEvent event) {
+        KeyCode code = event.getCode();
+
+        if (code == KeyCode.R) {
+            newGame(null);
+            event.consume();
+        } else if (code == KeyCode.M || code == KeyCode.ESCAPE) {
+            backToMainMenu();
             event.consume();
         }
     }
@@ -247,6 +276,39 @@ public class GuiController implements Initializable {
         // Position the brickPanel according to the starting brick position.
         updateBrickPanelPosition(brick);
     }
+
+        /**
+     * Called when a brand new game has started.
+     * Clears the old falling brick visuals (if any) and
+     * rebuilds them from the new ViewData.
+     */
+    public void showNewFallingBrick(ViewData brick) {
+        if (brickPanel != null) {
+            brickPanel.getChildren().clear();
+        }
+        initFallingBrick(brick);
+    }
+
+        /**
+     * Rebuilds the entire board and falling brick view for a fresh game.
+     * Used when restarting so visuals match the initial state.
+     */
+    public void resetGameView(int[][] boardMatrix, ViewData brick) {
+        // Clear existing cells from the grids.
+        if (gamePanel != null) {
+            gamePanel.getChildren().clear();
+        }
+        if (brickPanel != null) {
+            brickPanel.getChildren().clear();
+        }
+
+        // Recreate background and falling brick using the same helpers
+        // as the initial game setup.
+        initBackgroundCells(boardMatrix);
+        initFallingBrick(brick);
+    }
+
+
 
     /**
      * Creates and starts the automatic down-movement timer.
@@ -437,7 +499,6 @@ public class GuiController implements Initializable {
         }
     }
 
-
     /**
      * Starts a new game from the UI.
      * Uses setGameState so flags and overlays stay consistent.
@@ -486,10 +547,16 @@ public class GuiController implements Initializable {
 
     /**
      * Called from the pause overlay "Main Menu" button.
-     * Stops the game loop and asks Main to show the main menu scene.
      */
     @FXML
     private void handleBackToMenuFromPause() {
+        backToMainMenu();
+    }
+
+    /**
+     * Common helper for leaving the game screen and returning to the main menu.
+     */
+    private void backToMainMenu() {
         if (timeLine != null) {
             timeLine.stop();
         }

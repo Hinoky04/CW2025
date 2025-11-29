@@ -116,8 +116,13 @@ public class GameController implements InputEventListener {
 
     @Override
     public void createNewGame() {
-        // Reset the model and redraw the background; GUI stays the same.
+        // Reset the board state and spawn a new brick.
+        // SimpleBoard.newGame() already creates the first brick at the spawn position.
         board.newGame();
-        guiController.refreshGameBackground(board.getBoardMatrix());
+
+        // Rebuild the whole game view so it matches the initial state.
+        guiController.resetGameView(board.getBoardMatrix(), board.getViewData());
     }
+
+
 }
