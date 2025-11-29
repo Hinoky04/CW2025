@@ -15,20 +15,18 @@
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
 
-    <!-- Title of the game, using the existing large style. -->
+    <!-- Reuse existing style for a bold title. -->
     <Label fx:id="titleLabel"
            text="TetrisJFX"
            styleClass="gameOverStyle"/>
 
-    <!-- Classic mode uses the current baseline behaviour. -->
-    <Button fx:id="playClassicButton"
-            text="Play Classic"
+    <Button fx:id="classicButton"
+            text="Classic"
             onAction="#handlePlayClassic"
             styleClass="ipad-dark-grey"/>
 
-    <!-- Survival mode will later have different rules/config (Phase 5.3). -->
-    <Button fx:id="playSurvivalButton"
-            text="Play Survival"
+    <Button fx:id="survivalButton"
+            text="Survival"
             onAction="#handlePlaySurvival"
             styleClass="ipad-dark-grey"/>
 

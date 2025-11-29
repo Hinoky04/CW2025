@@ -1,9 +1,8 @@
 package com.comp2042;
 
 /**
- * High-level game modes supported by the application.
- * The rules and difficulty for each mode are defined
- * via GameConfig (added in Phase 5.3).
+ * Logical game modes. For now they share the same rules.
+ * In Phase 5.3+ we can attach different configs (speed, garbage, etc.).
  */
 public enum GameMode {
     CLASSIC,

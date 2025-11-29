@@ -38,7 +38,7 @@ public class GameController implements InputEventListener {
 
         // Tell the GUI which mode this run is using so it can restart correctly.
         guiController.setGameMode(gameMode);
-        
+
         guiController.initGameView(board.getBoardMatrix(), board.getViewData());
 
         // Bind score / level / combo from the model to the HUD.
@@ -46,9 +46,6 @@ public class GameController implements InputEventListener {
         guiController.bindScore(score.scoreProperty());
         guiController.bindLevel(score.levelProperty());
         guiController.bindCombo(score.comboProperty());
-
-        // In future we can use gameMode here to apply a specific GameConfig,
-        // e.g. different speed curve or special rules per mode.
     }
 
     @Override
@@ -107,7 +104,7 @@ public class GameController implements InputEventListener {
     }
 
     @Override
-    public ViewData onRightEvent(MoveEvent event) {
+       public ViewData onRightEvent(MoveEvent event) {
         board.moveBrickRight();
         return board.getViewData();
     }
@@ -120,13 +117,12 @@ public class GameController implements InputEventListener {
 
     @Override
     public void createNewGame() {
-        // Reset the board state and spawn a new brick.
-        // SimpleBoard.newGame() already creates the first brick at the spawn position.
+        // Reset the board state for completeness.
+        // This method is no longer used for Restart: restart now reloads
+        // the whole game scene via GuiController.restartSameMode().
         board.newGame();
 
-        // Rebuild the whole game view so it matches the initial state.
-        guiController.resetGameView(board.getBoardMatrix(), board.getViewData());
+        // Update background in case someone calls this in the future.
+        guiController.refreshGameBackground(board.getBoardMatrix());
     }
-
-
 }

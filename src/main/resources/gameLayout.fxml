@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
 <?import com.comp2042.GameOverPanel?>
 <?import javafx.scene.Group?>
 <?import javafx.scene.control.Button?>
@@ -10,7 +12,7 @@
 <Pane fx:controller="com.comp2042.GuiController"
       xmlns:fx="http://javafx.com/fxml">
 
-    <!-- Small grid on the side that shows the next brick. -->
+    <!-- Grid used to display the current falling brick. -->
     <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
 
     <!-- Outer frame for the main board (border, glow, etc.). -->
@@ -23,39 +25,15 @@
         </center>
     </BorderPane>
 
-    <!-- Compact HUD card showing score, level, combo and danger state.
-         GuiController still binds these Text nodes; only layout / style changes here. -->
-    <VBox layoutX="260.0" layoutY="25.0" spacing="6.0" styleClass="hud-box">
-        <Text fx:id="scoreText" text="Score 0" styleClass="hud-value"/>
-        <Text fx:id="levelText" text="Level 1" styleClass="hud-value"/>
-        <Text fx:id="comboText" text="Combo x0" styleClass="hud-value"/>
+    <!-- Simple HUD showing score, level, combo and danger. -->
+    <VBox layoutX="260.0" layoutY="40.0" spacing="5.0">
+        <Text fx:id="scoreText" text="Score 0"/>
+        <Text fx:id="levelText" text="Level 1"/>
+        <Text fx:id="comboText" text="Combo x0"/>
         <Text fx:id="dangerText" text="DANGER!"
               visible="false"
-              styleClass="dangerText hud-danger"/>
+              styleClass="dangerText"/>
     </VBox>
-
-    <!-- Pause overlay: dark background with a simple pause menu.
-         Shown when GameState is PAUSED; buttons call back into GuiController. -->
-    <Pane fx:id="pauseOverlay"
-          layoutX="0.0" layoutY="0.0"
-          prefWidth="400.0" prefHeight="500.0"
-          visible="false"
-          mouseTransparent="false"
-          style="-fx-background-color: rgba(0,0,0,0.5);">
-        <children>
-            <VBox alignment="CENTER" spacing="10.0" layoutX="40.0" layoutY="180.0">
-                <Label text="PAUSED" styleClass="gameOverStyle"/>
-
-                <Button text="Resume"
-                        onAction="#handleResumeFromPause"
-                        styleClass="ipad-dark-grey"/>
-
-                <Button text="Main Menu"
-                        onAction="#handleBackToMenuFromPause"
-                        styleClass="ipad-dark-grey"/>
-            </VBox>
-        </children>
-    </Pane>
 
     <!-- Used for pop-up messages (score, etc.) and the GameOverPanel. -->
     <Group fx:id="groupNotification" layoutX="14.0" layoutY="203.0">
@@ -63,6 +41,32 @@
             <GameOverPanel fx:id="gameOverPanel"/>
         </VBox>
     </Group>
+
+    <!-- Pause overlay: dim background + small pause menu. Always on top. -->
+    <Pane fx:id="pauseOverlay"
+          layoutX="0.0" layoutY="0.0"
+          prefWidth="400.0" prefHeight="500.0"
+          visible="false"
+          style="-fx-background-color: rgba(0,0,0,0.5);">
+        <children>
+            <VBox alignment="CENTER" spacing="10" layoutX="60.0" layoutY="180.0">
+                <Label text="PAUSED" styleClass="gameOverStyle"/>
+
+                <!-- Buttons only have fx:id; actions are wired in GuiController. -->
+                <Button fx:id="resumeButton"
+                        text="Resume"
+                        styleClass="ipad-dark-grey"/>
+
+                <Button fx:id="restartButton"
+                        text="Restart"
+                        styleClass="ipad-dark-grey"/>
+
+                <Button fx:id="pauseMenuButton"
+                        text="Main Menu"
+                        styleClass="ipad-dark-grey"/>
+            </VBox>
+        </children>
+    </Pane>
 
     <!-- Global styles for this scene (board border, fonts, colours, etc.). -->
     <stylesheets>

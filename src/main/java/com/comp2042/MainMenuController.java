@@ -8,17 +8,13 @@ import javafx.scene.control.Label;
 
 /**
  * Controller for the main menu screen.
- * Only handles menu actions (choose mode, quit).
+ * Lets the user choose a game mode or quit the app.
  */
 public class MainMenuController {
 
-    // Reference to the Main application so we can switch scenes.
+    // Reference to the Main application so we can change scenes.
     private Main mainApp;
 
-    /**
-     * Called by Main.showMainMenu() so the menu can
-     * start games in different modes via showGameScene(...).
-     */
     void init(Main mainApp) {
         this.mainApp = mainApp;
     }
@@ -27,17 +23,14 @@ public class MainMenuController {
     private Label titleLabel;
 
     @FXML
-    private Button playClassicButton;
+    private Button classicButton;
 
     @FXML
-    private Button playSurvivalButton;
+    private Button survivalButton;
 
     @FXML
     private Button quitButton;
 
-    /**
-     * Start a new game in Classic mode (current baseline behaviour).
-     */
     @FXML
     private void handlePlayClassic(ActionEvent event) {
         if (mainApp != null) {
@@ -45,10 +38,6 @@ public class MainMenuController {
         }
     }
 
-    /**
-     * Start a new game in Survival mode.
-     * For now this behaves like Classic; rules will diverge in Phase 5.3.
-     */
     @FXML
     private void handlePlaySurvival(ActionEvent event) {
         if (mainApp != null) {
@@ -56,9 +45,6 @@ public class MainMenuController {
         }
     }
 
-    /**
-     * Exit the application from the main menu.
-     */
     @FXML
     private void handleQuit(ActionEvent event) {
         Platform.exit();

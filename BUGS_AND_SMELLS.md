@@ -1,7 +1,7 @@
 # Bug & Code Smell Log
 
 Short internal log to support README and demo video.  
-Status tags: **[FIXED]**, **[TODO]**, **[WONTFIX]**.
+Status tags: **[FIXED]**, **[TODO]**, **[PARTIALLY FIXED]**, **[WONTFIX]**.
 
 ---
 
@@ -31,12 +31,28 @@ Status tags: **[FIXED]**, **[TODO]**, **[WONTFIX]**.
 ### BUG-03 – Extra falling brick visible after game over **[FIXED – Phase 5.2]**
 
 - Symptom: After game over, an extra copy of the last brick appeared on top of the final board state.
-- Root cause: `GameController.handleBrickLanded()` merged the brick and then called `board.createNewBrick()`.  
+- Root cause: `GameController.handleBrickLanded()` merged the brick into the background and then called `board.createNewBrick()`.  
   When `createNewBrick()` reported game over, the GUI still kept drawing the “current” falling brick in `brickPanel`.
 - Fix: In `GuiController.gameOver()`:
-  - Stop the Timeline safely.
+  - Stop the `Timeline` safely.
   - Clear `brickPanel.getChildren()` so the falling brick visuals are removed once the brick is merged into the background.
 - Result: Final board state is shown correctly with no duplicate brick after game over.
+
+---
+
+### BUG-04 – Pause menu buttons do not respond **[FIXED – Phase 5.2]**
+
+- Symptom: Pressing **P** showed the pause overlay, but clicking **Resume**, **Restart**, or **Main Menu** did nothing.
+- Root cause:
+  - In `gameLayout.fxml` the `pauseOverlay` pane was declared **under** `groupNotification`, so the notification group was always drawn on top.
+  - `pauseOverlay` also had `mouseTransparent="true"`, meaning it and its children did not receive mouse events.
+- Fix:
+  - Moved `pauseOverlay` to the end of the root `<Pane>` so it is rendered on top of the board/notifications.
+  - In `GuiController.initialize(...)` explicitly called `pauseOverlay.setMouseTransparent(false)` and wired the three buttons with `setOnAction(...)`.
+- Result: Pause menu is now fully interactive:
+  - **Resume** toggles back to `PLAYING`.
+  - **Restart** restarts the current game mode via `restartSameMode()`.
+  - **Main Menu** returns to the main menu via `backToMainMenu()`.
 
 ---
 
@@ -53,9 +69,10 @@ Status tags: **[FIXED]**, **[TODO]**, **[WONTFIX]**.
 
 ### SMELL-01 – Incomplete pause feature in `GuiController` **[FIXED – replaced by GameState pause]**
 
-- Original issue: `pauseGame(ActionEvent)` only called `gamePanel.requestFocus()` and did not change `isPause` / Timeline state.
+- Original issue: `pauseGame(ActionEvent)` only called `gamePanel.requestFocus()` and did not change `isPause` / `Timeline` state.
 - Impact: Pause button existed in UI but did not pause the game.
-- Current state: Replaced by proper pause/resume using `GameState` and a pause overlay (handled in Phase 4 and extended in Phase 5 with a pause menu).
+- Current state: Replaced by proper pause/resume using `GameState` and a pause overlay.  
+  Phase 5 added a pause menu (Resume / Restart / Main Menu) which reuses the same `GameState` logic.
 
 ---
 
@@ -69,14 +86,25 @@ Status tags: **[FIXED]**, **[TODO]**, **[WONTFIX]**.
 
 ---
 
-### SMELL-03 – `SimpleBoard` ignores constructor parameters **[TODO – future refactor]**
+### SMELL-03 – `SimpleBoard` ignores constructor parameters **[PARTIALLY FIXED – Phase 5.x]**
 
-- Evidence: Constructor takes `(int width, int height)` but always creates `new int[ROWS][COLUMNS]`.
-- Impact: Board size is effectively hard-coded; parameters are misleading and hurt reuse.
+- Original evidence: Constructor took `(int width, int height)` but always created `new int[ROWS][COLUMNS]`, effectively hard-coding the board size.
+- Impact: Parameters were misleading and hurt reuse.
+- Current state:
+  - `newGame()` now uses stored `rows / columns` fields (`boardMatrix = new int[rows][columns];`) so the reset path respects the constructor size.
+  - Initial allocation still relies on the static `ROWS` / `COLUMNS` constants.
 - Plan (later phase):
-  - Store `width` / `height` in fields.
-  - Allocate the backing array using those values or remove the parameters if dynamic sizing is not needed.
+  - Fully unify allocation to always use the instance fields, or
+  - Remove the constructor parameters if dynamic sizing is not required for this coursework.
 
 ---
 
-### SMELL-04 – Tight coupling between `GameController` and `SimpleBoard` **[TOD]()**
+### SMELL-04 – Tight coupling between `GameController` and `SimpleBoard` **[TODO – future refactor]**
+
+- Evidence: `GameController` directly constructs `new SimpleBoard(BOARD_ROWS, BOARD_COLUMNS)` instead of working purely with the `Board` interface.
+- Impact: Harder to:
+  - Swap in another `Board` implementation (e.g. for different game modes), or
+  - Use a fake `Board` in unit tests.
+- Plan (later phase):
+  - Introduce a `Board` factory or inject a `Board` via the constructor (`GameController(Board board, GuiController gui)`).
+  - Keep `GameController` depending only on the `Board` interface so it is easier to test and extend.

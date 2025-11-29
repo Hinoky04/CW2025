@@ -8,6 +8,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Group;
+import javafx.scene.control.Button;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
@@ -23,21 +24,25 @@ import javafx.util.Duration;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+/**
+ * JavaFX controller for the main game screen.
+ * Handles keyboard input, HUD, pause/game-over overlays and drawing the board.
+ */
 public class GuiController implements Initializable {
 
-    // Size of each cell (brick) in the grid, in pixels.
+    // Size of each cell (brick) in pixels.
     private static final int BRICK_SIZE = 20;
 
-    // Number of hidden rows at the top of the board (spawn area).
+    // Number of hidden rows at the top (spawn area not visible).
     private static final int HIDDEN_TOP_ROWS = 2;
 
-    // Y offset for the brickPanel so it lines up visually with the grid.
+    // Offset so the brick panel lines up visually with the board.
     private static final int BRICK_PANEL_Y_OFFSET = -42;
 
-    // How often the piece falls automatically (milliseconds).
+    // Base drop interval in milliseconds.
     private static final int FALL_INTERVAL_MS = 400;
 
-    // How many top visible rows are considered "danger zone".
+    // How many top visible rows count as "danger zone".
     private static final int DANGER_VISIBLE_ROWS = 3;
 
     @FXML
@@ -70,6 +75,16 @@ public class GuiController implements Initializable {
     @FXML
     private Text dangerText;             // warning text when stack is near the top
 
+    // Pause overlay buttons (wired manually in initialize()).
+    @FXML
+    private Button resumeButton;
+
+    @FXML
+    private Button restartButton;
+
+    @FXML
+    private Button pauseMenuButton;
+
     // Background cells (for the board).
     private Rectangle[][] displayMatrix;
 
@@ -98,7 +113,6 @@ public class GuiController implements Initializable {
     // Current game mode for this run (Classic / Survival, etc.).
     private GameMode currentMode;
 
-
     /**
      * Called from Main.showGameScene() so this controller can access
      * navigation methods like showMainMenu().
@@ -107,10 +121,14 @@ public class GuiController implements Initializable {
         this.mainApp = mainApp;
     }
 
+    /**
+     * Called from GameController so the GUI knows which mode is running.
+     * Used when restarting the same mode.
+     */
     void setGameMode(GameMode mode) {
-    this.currentMode = mode;
+        // Fallback to CLASSIC so restartSameMode() always has a valid mode.
+        this.currentMode = (mode != null) ? mode : GameMode.CLASSIC;
     }
-
 
     /**
      * Central helper for changing game state.
@@ -142,35 +160,70 @@ public class GuiController implements Initializable {
             Font.loadFont(fontUrl.toExternalForm(), 38);
         }
 
-        // Allow the game panel to receive keyboard focus and request it initially.
+        // Let the game panel receive keyboard input.
         gamePanel.setFocusTraversable(true);
         gamePanel.requestFocus();
-
-        // Handle keyboard input for movement, pause, and new game.
         gamePanel.setOnKeyPressed(this::handleKeyPressed);
 
-        // Wire game-over panel buttons to restart and main menu actions.
+        // Wire game-over panel buttons to restart / main menu.
         if (gameOverPanel != null) {
             gameOverPanel.setOnRestart(this::restartSameMode);
             gameOverPanel.setOnMainMenu(this::backToMainMenu);
         }
 
-        // Use centralised state helper so overlays stay consistent.
+        // ===== Pause overlay buttons (with debug prints) =====
+        if (resumeButton != null) {
+            System.out.println("DEBUG: resumeButton injected");
+            resumeButton.setOnAction(e -> {
+                System.out.println("DEBUG: Resume clicked");
+                togglePause();          // resume / pause
+            });
+        } else {
+            System.out.println("DEBUG: resumeButton is NULL");
+        }
+
+        if (restartButton != null) {
+            System.out.println("DEBUG: restartButton injected");
+            restartButton.setOnAction(e -> {
+                System.out.println("DEBUG: Restart clicked");
+                restartSameMode();      // restart current mode
+            });
+        } else {
+            System.out.println("DEBUG: restartButton is NULL");
+        }
+
+        if (pauseMenuButton != null) {
+            System.out.println("DEBUG: pauseMenuButton injected");
+            pauseMenuButton.setOnAction(e -> {
+                System.out.println("DEBUG: Pause Main Menu clicked");
+                backToMainMenu();       // back to main menu
+            });
+        } else {
+            System.out.println("DEBUG: pauseMenuButton is NULL");
+        }
+
+        // VERY IMPORTANT: make sure pause overlay can receive mouse events.
+        // If mouseTransparent is true, all clicks will pass through and buttons won't fire.
+        if (pauseOverlay != null) {
+            pauseOverlay.setMouseTransparent(false);
+        }
+
+        // Start in PLAYING state (no overlays visible).
         setGameState(GameState.PLAYING);
 
-        // Ensure danger HUD starts hidden.
+        // Danger HUD starts hidden.
         setDanger(false);
     }
 
+
     /**
      * Centralised key handler.
-     * Handles pause (P / ESC), new game (N),
-     * and forwards movement only while playing.
+     * Handles pause (P / ESC), restart (N), and forwards movement only while playing.
      */
     private void handleKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
 
-        // Special handling when the game is already over.
+        // Special handling when the game has finished.
         if (gameState == GameState.GAME_OVER) {
             handleGameOverKey(event);
             return;
@@ -183,9 +236,9 @@ public class GuiController implements Initializable {
             return;
         }
 
-        // N starts a new game at any time (same mode).
+        // N restarts the current mode from scratch.
         if (code == KeyCode.N) {
-            newGame(null);
+            restartSameMode();
             event.consume();
             return;
         }
@@ -233,7 +286,6 @@ public class GuiController implements Initializable {
             backToMainMenu();
             event.consume();
         }
-
     }
 
     /**
@@ -245,7 +297,6 @@ public class GuiController implements Initializable {
 
     /**
      * Called by the game logic to set up the initial board and piece view.
-     * Split into smaller helpers for readability.
      */
     public void initGameView(int[][] boardMatrix, ViewData brick) {
         initBackgroundCells(boardMatrix);
@@ -286,39 +337,6 @@ public class GuiController implements Initializable {
         // Position the brickPanel according to the starting brick position.
         updateBrickPanelPosition(brick);
     }
-
-        /**
-     * Called when a brand new game has started.
-     * Clears the old falling brick visuals (if any) and
-     * rebuilds them from the new ViewData.
-     */
-    public void showNewFallingBrick(ViewData brick) {
-        if (brickPanel != null) {
-            brickPanel.getChildren().clear();
-        }
-        initFallingBrick(brick);
-    }
-
-        /**
-     * Rebuilds the entire board and falling brick view for a fresh game.
-     * Used when restarting so visuals match the initial state.
-     */
-    public void resetGameView(int[][] boardMatrix, ViewData brick) {
-        // Clear existing cells from the grids.
-        if (gamePanel != null) {
-            gamePanel.getChildren().clear();
-        }
-        if (brickPanel != null) {
-            brickPanel.getChildren().clear();
-        }
-
-        // Recreate background and falling brick using the same helpers
-        // as the initial game setup.
-        initBackgroundCells(boardMatrix);
-        initFallingBrick(brick);
-    }
-
-
 
     /**
      * Creates and starts the automatic down-movement timer.
@@ -468,7 +486,6 @@ public class GuiController implements Initializable {
 
     /**
      * Binds the combo property from the model to the HUD.
-     * Shows "Combo xN" so the player can see when a chain is building or broken.
      */
     public void bindCombo(IntegerProperty comboProperty) {
         if (comboText != null) {
@@ -492,8 +509,6 @@ public class GuiController implements Initializable {
 
     /**
      * Game over handler.
-     * Uses setGameState so flags and overlays stay consistent,
-     * and clears the falling brick so it is not drawn on top of the final board.
      */
     public void gameOver() {
         if (timeLine != null) {
@@ -503,21 +518,25 @@ public class GuiController implements Initializable {
         setGameState(GameState.GAME_OVER);
 
         // Once the game is over, we no longer need the falling brick visuals.
-        // The last brick has already been merged into the background.
         if (brickPanel != null) {
             brickPanel.getChildren().clear();
         }
     }
 
     /**
-     * Starts a new game from the UI.
-     * Uses setGameState so flags and overlays stay consistent.
+     * Old "new game" button behaviour is now equivalent to restartSameMode().
+     * Still保留这个方法，给 FXML 或其它地方复用。
      */
     public void newGame(javafx.event.ActionEvent actionEvent) {
-        // N key or any UI "New Game" now simply restarts the current mode.
         restartSameMode();
     }
 
+    /**
+     * Pause button handler in case有其它地方（工具栏）调用。
+     */
+    public void pauseGame(javafx.event.ActionEvent actionEvent) {
+        togglePause();
+    }
 
     /**
      * Core pause/resume behaviour.
@@ -525,6 +544,14 @@ public class GuiController implements Initializable {
      * PAUSED  -> PLAYING resumes the timeline and hides overlay.
      */
     private void togglePause() {
+        if (timeLine == null) {
+            // Fallback: only toggle overlay if timeline is not ready.
+            setGameState(gameState == GameState.PLAYING
+                    ? GameState.PAUSED
+                    : GameState.PLAYING);
+            return;
+        }
+
         if (gameState == GameState.PLAYING) {
             timeLine.pause();
             setGameState(GameState.PAUSED);
@@ -533,31 +560,22 @@ public class GuiController implements Initializable {
             setGameState(GameState.PLAYING);
             gamePanel.requestFocus();
         }
-        // In GAME_OVER or other states we ignore pause.
     }
 
     /**
-     * Pause button handler in the toolbar/menu.
-     * Simply calls the core togglePause() method.
+     * Restart the current mode by reloading the whole game scene.
+     * This guarantees the same spawn position as a fresh start.
      */
-    public void pauseGame(javafx.event.ActionEvent actionEvent) {
-        togglePause();
-    }
+    private void restartSameMode() {
+        if (mainApp == null || currentMode == null) {
+            return;
+        }
 
-    /**
-     * Called from the pause overlay "Resume" button.
-     */
-    @FXML
-    private void handleResumeFromPause() {
-        togglePause();
-    }
+        if (timeLine != null) {
+            timeLine.stop();
+        }
 
-    /**
-     * Called from the pause overlay "Main Menu" button.
-     */
-    @FXML
-    private void handleBackToMenuFromPause() {
-        backToMainMenu();
+        mainApp.showGameScene(currentMode);
     }
 
     /**
@@ -572,24 +590,8 @@ public class GuiController implements Initializable {
         }
     }
 
-        /**
-     * Restart the current mode by reloading the whole game scene.
-     * This guarantees the same spawn position as a fresh start.
-     */
-    private void restartSameMode() {
-        if (timeLine != null) {
-            timeLine.stop();
-        }
-        if (mainApp != null && currentMode != null) {
-            mainApp.showGameScene(currentMode);
-        }
-    }
-
-
     /**
      * Updates the danger state based on the contents of the board matrix.
-     * If any block is inside the top DANGER_VISIBLE_ROWS of the visible area,
-     * we consider the player to be in the danger zone.
      */
     private void updateDangerFromBoard(int[][] board) {
         boolean found = false;
