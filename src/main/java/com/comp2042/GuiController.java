@@ -95,6 +95,10 @@ public class GuiController implements Initializable {
     // Reference back to the Main app so the game screen can return to the main menu.
     private Main mainApp;
 
+    // Current game mode for this run (Classic / Survival, etc.).
+    private GameMode currentMode;
+
+
     /**
      * Called from Main.showGameScene() so this controller can access
      * navigation methods like showMainMenu().
@@ -102,6 +106,11 @@ public class GuiController implements Initializable {
     void init(Main mainApp) {
         this.mainApp = mainApp;
     }
+
+    void setGameMode(GameMode mode) {
+    this.currentMode = mode;
+    }
+
 
     /**
      * Central helper for changing game state.
@@ -142,7 +151,7 @@ public class GuiController implements Initializable {
 
         // Wire game-over panel buttons to restart and main menu actions.
         if (gameOverPanel != null) {
-            gameOverPanel.setOnRestart(() -> newGame(null));
+            gameOverPanel.setOnRestart(this::restartSameMode);
             gameOverPanel.setOnMainMenu(this::backToMainMenu);
         }
 
@@ -218,12 +227,13 @@ public class GuiController implements Initializable {
         KeyCode code = event.getCode();
 
         if (code == KeyCode.R) {
-            newGame(null);
+            restartSameMode();
             event.consume();
         } else if (code == KeyCode.M || code == KeyCode.ESCAPE) {
             backToMainMenu();
             event.consume();
         }
+
     }
 
     /**
@@ -504,13 +514,10 @@ public class GuiController implements Initializable {
      * Uses setGameState so flags and overlays stay consistent.
      */
     public void newGame(javafx.event.ActionEvent actionEvent) {
-        timeLine.stop();
-        eventListener.createNewGame();
-        gamePanel.requestFocus();
-        timeLine.play();
-
-        setGameState(GameState.PLAYING);
+        // N key or any UI "New Game" now simply restarts the current mode.
+        restartSameMode();
     }
+
 
     /**
      * Core pause/resume behaviour.
@@ -564,6 +571,20 @@ public class GuiController implements Initializable {
             mainApp.showMainMenu();
         }
     }
+
+        /**
+     * Restart the current mode by reloading the whole game scene.
+     * This guarantees the same spawn position as a fresh start.
+     */
+    private void restartSameMode() {
+        if (timeLine != null) {
+            timeLine.stop();
+        }
+        if (mainApp != null && currentMode != null) {
+            mainApp.showGameScene(currentMode);
+        }
+    }
+
 
     /**
      * Updates the danger state based on the contents of the board matrix.

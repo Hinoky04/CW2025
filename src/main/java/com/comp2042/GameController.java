@@ -35,6 +35,10 @@ public class GameController implements InputEventListener {
     private void initialiseGame() {
         board.createNewBrick();
         guiController.setEventListener(this);
+
+        // Tell the GUI which mode this run is using so it can restart correctly.
+        guiController.setGameMode(gameMode);
+        
         guiController.initGameView(board.getBoardMatrix(), board.getViewData());
 
         // Bind score / level / combo from the model to the HUD.
