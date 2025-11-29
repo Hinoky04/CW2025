@@ -12,7 +12,10 @@ import java.net.URL;
 public class Main extends Application {
 
     // === Window configuration ===
+    // Title shown in the window title bar.
     private static final String WINDOW_TITLE = "TetrisJFX";
+
+    // Fixed window size for a stable layout.
     private static final int WINDOW_WIDTH = 300;
     private static final int WINDOW_HEIGHT = 510;
 
@@ -27,8 +30,10 @@ public class Main extends Application {
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
         this.primaryStage.setTitle(WINDOW_TITLE);
+        this.primaryStage.setResizable(false); // lock size to avoid layout issues
 
-        // Start application on the main menu instead of directly in the game.
+        // Entry point for the app: show the main menu first,
+        // the menu will decide which game mode to start.
         showMainMenu();
     }
 
@@ -45,8 +50,9 @@ public class Main extends Application {
             FXMLLoader loader = new FXMLLoader(location);
             Parent root = loader.load();
 
+            // Inject Main so the menu controller can call back into showGameScene(...).
             MainMenuController controller = loader.getController();
-            controller.init(this); // allow controller to switch scenes via Main
+            controller.init(this);
 
             Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
             primaryStage.setScene(scene);
@@ -57,10 +63,20 @@ public class Main extends Application {
     }
 
     /**
-     * Loads and shows the main game scene.
-     * This reuses the existing gameLayout.fxml + controllers.
+     * Convenience overload used by older code paths.
+     * Defaults to CLASSIC mode so existing behaviour stays the same.
+     * Once all calls are updated to pass a GameMode, this can be removed.
      */
     void showGameScene() {
+        showGameScene(GameMode.CLASSIC);
+    }
+
+    /**
+     * Loads and shows the main game scene for the given mode.
+     * The mode is passed down to GameController so the rules/config
+     * can be customised per mode (Classic, Survival, etc.).
+     */
+    void showGameScene(GameMode mode) {
         URL location = getClass().getClassLoader().getResource(GAME_FXML);
         if (location == null) {
             throw new IllegalStateException("Cannot find FXML file " + GAME_FXML);
@@ -78,8 +94,9 @@ public class Main extends Application {
             primaryStage.setScene(scene);
             primaryStage.show();
 
-            // Start the game logic. The instance is not needed elsewhere for now.
-            new GameController(guiController);
+            // Start the game logic for the selected mode.
+            // GameController will later use 'mode' to choose different configs.
+            new GameController(guiController, mode);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load game scene", e);
         }

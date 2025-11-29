@@ -6,19 +6,25 @@ package com.comp2042;
  */
 public class GameController implements InputEventListener {
 
-    // Board size (easier to change here than using 25/10 everywhere)
+    // Board size (easier to change here than using 25/10 everywhere).
     private static final int BOARD_ROWS = 25;
     private static final int BOARD_COLUMNS = 10;
 
-    // Core game model and GUI controller
+    // Core game model and GUI controller.
     private final Board board;
     private final GuiController guiController;
 
+    // Selected game mode for this run (Classic, Survival, etc.).
+    private final GameMode gameMode;
+
     /**
-     * Create a new game controller and use the default board size.
+     * Create a new game controller and use the default board size
+     * for the selected mode. Behaviour is still the same for all
+     * modes at this stage; rules will diverge in later steps.
      */
-    public GameController(GuiController guiController) {
+    public GameController(GuiController guiController, GameMode gameMode) {
         this.guiController = guiController;
+        this.gameMode = gameMode;
         this.board = new SimpleBoard(BOARD_ROWS, BOARD_COLUMNS);
         initialiseGame();
     }
@@ -36,6 +42,9 @@ public class GameController implements InputEventListener {
         guiController.bindScore(score.scoreProperty());
         guiController.bindLevel(score.levelProperty());
         guiController.bindCombo(score.comboProperty());
+
+        // In future we can use gameMode here to apply a specific GameConfig,
+        // e.g. different speed curve or special rules per mode.
     }
 
     @Override
@@ -44,14 +53,14 @@ public class GameController implements InputEventListener {
         ClearRow clearRow = null;
 
         if (!moved) {
-            // Brick has landed: merge, clear rows, maybe game over
+            // Brick has landed: merge, clear rows, maybe game over.
             clearRow = handleBrickLanded();
         } else if (event.getEventSource() == EventSource.USER) {
-            // User soft drop gives a small score bonus
+            // User soft drop gives a small score bonus.
             board.getScore().add(1);
         }
 
-        // GUI only needs cleared-row info + new brick view data
+        // GUI only needs cleared-row info + new brick view data.
         return new DownData(clearRow, board.getViewData());
     }
 
@@ -78,7 +87,7 @@ public class GameController implements InputEventListener {
             score.registerLandingWithoutClear();
         }
 
-        // true means new brick could not be placed → game over
+        // true means new brick could not be placed → game over.
         if (board.createNewBrick()) {
             guiController.gameOver();
         }
@@ -107,7 +116,7 @@ public class GameController implements InputEventListener {
 
     @Override
     public void createNewGame() {
-        // Reset the model and redraw the background; GUI stays the same
+        // Reset the model and redraw the background; GUI stays the same.
         board.newGame();
         guiController.refreshGameBackground(board.getBoardMatrix());
     }
