@@ -8,13 +8,17 @@ import javafx.scene.control.Label;
 
 /**
  * Controller for the main menu screen.
- * Lets the user choose a game mode or quit the app.
+ * Responsible only for menu actions (choose mode, quit).
  */
 public class MainMenuController {
 
-    // Reference to the Main application so we can change scenes.
+    // Reference to the Main application so we can switch scenes.
     private Main mainApp;
 
+    /**
+     * Called by Main after loading the FXML.
+     * We do not own the Stage, we just ask Main to switch scenes.
+     */
     void init(Main mainApp) {
         this.mainApp = mainApp;
     }
@@ -29,19 +33,41 @@ public class MainMenuController {
     private Button survivalButton;
 
     @FXML
-    private Button quitButton;
+    private Button hyperButton;
 
     @FXML
-    private void handlePlayClassic(ActionEvent event) {
+    private Button rushButton;
+
+    @FXML
+    private Button quitButton;
+
+    // --- Button handlers ---
+
+    @FXML
+    private void handleClassic(ActionEvent event) {
         if (mainApp != null) {
             mainApp.showGameScene(GameMode.CLASSIC);
         }
     }
 
     @FXML
-    private void handlePlaySurvival(ActionEvent event) {
+    private void handleSurvival(ActionEvent event) {
         if (mainApp != null) {
             mainApp.showGameScene(GameMode.SURVIVAL);
+        }
+    }
+
+    @FXML
+    private void handleHyper(ActionEvent event) {
+        if (mainApp != null) {
+            mainApp.showGameScene(GameMode.HYPER);
+        }
+    }
+
+    @FXML
+    private void handleRush(ActionEvent event) {
+        if (mainApp != null) {
+            mainApp.showGameScene(GameMode.RUSH_40);
         }
     }
 

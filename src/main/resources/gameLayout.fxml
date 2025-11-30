@@ -8,68 +8,80 @@
 <?import javafx.scene.text.Text?>
 <?import java.net.URL?>
 
-<!-- Main game screen. GuiController is the brain behind this layout. -->
-<Pane fx:controller="com.comp2042.GuiController"
-      xmlns:fx="http://javafx.com/fxml">
+<!-- Main game screen. GuiController is the brain behind this layout.
+     Root is now a StackPane so the fixed-size game area can be centered
+     when the window is maximized. -->
+<StackPane fx:controller="com.comp2042.GuiController"
+           xmlns:fx="http://javafx.com/fxml"
+           alignment="CENTER">
 
-    <!-- Grid used to display the current falling brick. -->
-    <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
+    <children>
+        <!-- Fixed-size game area (board + HUD + overlays). -->
+        <Group>
+            <children>
 
-    <!-- Outer frame for the main board (border, glow, etc.). -->
-    <BorderPane styleClass="gameBoard" fx:id="gameBoard">
-        <center>
-            <!-- Actual 10xN board where the pieces fall. -->
-            <GridPane fx:id="gamePanel"
-                      hgap="1" vgap="1"
-                      layoutY="30" layoutX="40"/>
-        </center>
-    </BorderPane>
+                <!-- Grid used to display the current falling brick. -->
+                <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
 
-    <!-- Simple HUD showing score, level, combo and danger. -->
-    <VBox layoutX="260.0" layoutY="40.0" spacing="5.0">
-        <Text fx:id="scoreText" text="Score 0"/>
-        <Text fx:id="levelText" text="Level 1"/>
-        <Text fx:id="comboText" text="Combo x0"/>
-        <Text fx:id="dangerText" text="DANGER!"
-              visible="false"
-              styleClass="dangerText"/>
-    </VBox>
+                <!-- Outer frame for the main board (border, glow, etc.). -->
+                <BorderPane styleClass="gameBoard" fx:id="gameBoard">
+                    <center>
+                        <!-- Actual 10xN board where the pieces fall. -->
+                        <GridPane fx:id="gamePanel"
+                                  hgap="1" vgap="1"
+                                  layoutY="30" layoutX="40"/>
+                    </center>
+                </BorderPane>
 
-    <!-- Used for pop-up messages (score, etc.) and the GameOverPanel. -->
-    <Group fx:id="groupNotification" layoutX="14.0" layoutY="203.0">
-        <VBox alignment="CENTER">
-            <GameOverPanel fx:id="gameOverPanel"/>
-        </VBox>
-    </Group>
+                <!-- Simple HUD showing score, level, combo and danger. -->
+                <VBox layoutX="260.0" layoutY="40.0" spacing="5.0">
+                    <Text fx:id="scoreText" text="Score 0"/>
+                    <Text fx:id="levelText" text="Level 1"/>
+                    <Text fx:id="comboText" text="Combo x0"/>
+                    <Text fx:id="dangerText" text="DANGER!"
+                          visible="false"
+                          styleClass="dangerText"/>
+                </VBox>
 
-    <!-- Pause overlay: dim background + small pause menu. Always on top. -->
-    <Pane fx:id="pauseOverlay"
-          layoutX="0.0" layoutY="0.0"
-          prefWidth="400.0" prefHeight="500.0"
-          visible="false"
-          style="-fx-background-color: rgba(0,0,0,0.5);">
-        <children>
-            <VBox alignment="CENTER" spacing="10" layoutX="60.0" layoutY="180.0">
-                <Label text="PAUSED" styleClass="gameOverStyle"/>
+                <!-- Used for pop-up messages (score, etc.) and the GameOverPanel. -->
+                <Group fx:id="groupNotification" layoutX="14.0" layoutY="203.0">
+                    <VBox alignment="CENTER">
+                        <GameOverPanel fx:id="gameOverPanel"/>
+                    </VBox>
+                </Group>
 
-                <!-- Buttons only have fx:id; actions are wired in GuiController. -->
-                <Button fx:id="resumeButton"
-                        text="Resume"
-                        styleClass="ipad-dark-grey"/>
+                <!-- Pause overlay: dim background + small pause menu. Always on top. -->
+                <Pane fx:id="pauseOverlay"
+                      layoutX="0.0" layoutY="0.0"
+                      prefWidth="400.0" prefHeight="500.0"
+                      visible="false"
+                      style="-fx-background-color: rgba(0,0,0,0.5);">
+                    <children>
+                        <VBox alignment="CENTER" spacing="10" layoutX="60.0" layoutY="180.0">
+                            <Label text="PAUSED" styleClass="gameOverStyle"/>
 
-                <Button fx:id="restartButton"
-                        text="Restart"
-                        styleClass="ipad-dark-grey"/>
+                            <!-- Buttons only have fx:id; actions are wired in GuiController. -->
+                            <Button fx:id="resumeButton"
+                                    text="Resume"
+                                    styleClass="ipad-dark-grey"/>
 
-                <Button fx:id="pauseMenuButton"
-                        text="Main Menu"
-                        styleClass="ipad-dark-grey"/>
-            </VBox>
-        </children>
-    </Pane>
+                            <Button fx:id="restartButton"
+                                    text="Restart"
+                                    styleClass="ipad-dark-grey"/>
+
+                            <Button fx:id="pauseMenuButton"
+                                    text="Main Menu"
+                                    styleClass="ipad-dark-grey"/>
+                        </VBox>
+                    </children>
+                </Pane>
+
+            </children>
+        </Group>
+    </children>
 
     <!-- Global styles for this scene (board border, fonts, colours, etc.). -->
     <stylesheets>
         <URL value="@window_style.css"/>
     </stylesheets>
-</Pane>
+</StackPane>

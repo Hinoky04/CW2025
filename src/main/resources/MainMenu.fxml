@@ -15,19 +15,30 @@
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
 
-    <!-- Reuse existing style for a bold title. -->
+    <!-- Big title, reuse your digital style. -->
     <Label fx:id="titleLabel"
            text="TetrisJFX"
            styleClass="gameOverStyle"/>
 
+    <!-- One button per game mode. -->
     <Button fx:id="classicButton"
             text="Classic"
-            onAction="#handlePlayClassic"
+            onAction="#handleClassic"
             styleClass="ipad-dark-grey"/>
 
     <Button fx:id="survivalButton"
             text="Survival"
-            onAction="#handlePlaySurvival"
+            onAction="#handleSurvival"
+            styleClass="ipad-dark-grey"/>
+
+    <Button fx:id="hyperButton"
+            text="Hyper"
+            onAction="#handleHyper"
+            styleClass="ipad-dark-grey"/>
+
+    <Button fx:id="rushButton"
+            text="Rush 40"
+            onAction="#handleRush"
             styleClass="ipad-dark-grey"/>
 
     <Button fx:id="quitButton"
