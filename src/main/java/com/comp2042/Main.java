@@ -4,6 +4,10 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -11,15 +15,18 @@ import java.net.URL;
 
 public class Main extends Application {
 
-    // Window title shown in the title bar
+    // Window title shown in the title bar.
     private static final String WINDOW_TITLE = "TetrisJFX";
 
-    // Initial window size (scene size). The stage will be maximized anyway,
-    // but these values are still used as the "logical" game area.
+    // Initial logical size used before the window is maximized.
     private static final int WINDOW_WIDTH = 600;
     private static final int WINDOW_HEIGHT = 900;
 
-    // FXML paths in resources
+    // Minimum window size to prevent the UI from being squashed too far.
+    private static final int MIN_WINDOW_WIDTH = 600;
+    private static final int MIN_WINDOW_HEIGHT = 800;
+
+    // FXML paths in resources.
     private static final String GAME_FXML = "gameLayout.fxml";
     private static final String MAIN_MENU_FXML = "MainMenu.fxml";
 
@@ -33,14 +40,26 @@ public class Main extends Application {
 
         // Allow the user (and our code) to resize the window.
         this.primaryStage.setResizable(true);
+        this.primaryStage.setMinWidth(MIN_WINDOW_WIDTH);
+        this.primaryStage.setMinHeight(MIN_WINDOW_HEIGHT);
+
+        // Set an initial logical size before maximising.
+        this.primaryStage.setWidth(WINDOW_WIDTH);
+        this.primaryStage.setHeight(WINDOW_HEIGHT);
+
+        // Configure fullscreen behaviour:
+        // - no hint text
+        // - ESC does NOT exit fullscreen automatically (we use F11 instead),
+        //   so ESC can be reserved for in-game actions like pause/menu.
+        this.primaryStage.setFullScreenExitHint("");
+        this.primaryStage.setFullScreenExitKeyCombination(KeyCombination.NO_MATCH);
 
         // Start application on the main menu instead of directly in the game.
         showMainMenu();
 
-        // Safe "fullscreen-like" behaviour: start maximized on whatever screen.
+        // Start maximized to give a fullscreen-like experience by default.
+        // Players can still toggle real fullscreen with F11.
         this.primaryStage.setMaximized(true);
-        // If you really want real fullscreen with no window border, use:
-        // this.primaryStage.setFullScreen(true);
     }
 
     /**
@@ -59,12 +78,16 @@ public class Main extends Application {
             MainMenuController controller = loader.getController();
             controller.init(this); // allow controller to switch scenes via Main
 
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+            // Let the root layout grow with the stage size.
+            bindRootToStageSize(root);
+
+            // Do NOT force a new window size here; keep whatever the stage has
+            // (maximized / fullscreen / normal).
+            Scene scene = new Scene(root);
+            attachFullscreenToggle(scene);
+
             primaryStage.setScene(scene);
             primaryStage.show();
-
-            // Keep window maximized when returning to the menu.
-            primaryStage.setMaximized(true);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load main menu", e);
         }
@@ -85,23 +108,55 @@ public class Main extends Application {
             Parent root = loader.load();
             GuiController guiController = loader.getController();
 
-            // Let GUI go back to menu and know which mode we are in
+            // Let GUI go back to menu and know which mode we are in.
             guiController.init(this);
             guiController.setGameMode(mode);
 
-            Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+            // Let the root layout grow with the stage size.
+            bindRootToStageSize(root);
+
+            // Again, do NOT force a fixed size scene.
+            Scene scene = new Scene(root);
+            attachFullscreenToggle(scene);
+
             primaryStage.setScene(scene);
             primaryStage.show();
 
-            // 🔥 make sure the game scene is also fullscreen / maximized
-            primaryStage.setMaximized(true);
-            // or: primaryStage.setFullScreen(true);
+            // Do not touch maximized/fullscreen here; keep whatever the user chose.
 
-            // Start game logic
+            // Start game logic.
             new GameController(guiController, mode);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load game scene", e);
         }
+    }
+
+    /**
+     * If the root is a Region (BorderPane, AnchorPane, etc.), bind its preferred
+     * size to the stage size so the layout always fills the window.
+     */
+    private void bindRootToStageSize(Parent root) {
+        if (root instanceof Region) {
+            Region region = (Region) root;
+            region.prefWidthProperty().bind(primaryStage.widthProperty());
+            region.prefHeightProperty().bind(primaryStage.heightProperty());
+        }
+    }
+
+    /**
+     * Adds a global key handler to the given scene so F11 toggles fullscreen.
+     * This works for both the main menu and the game scene.
+     */
+    private void attachFullscreenToggle(Scene scene) {
+        if (scene == null) {
+            return;
+        }
+        scene.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.F11) {
+                primaryStage.setFullScreen(!primaryStage.isFullScreen());
+                event.consume();
+            }
+        });
     }
 
     public static void main(String[] args) {
