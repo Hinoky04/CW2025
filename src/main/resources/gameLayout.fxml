@@ -10,89 +10,126 @@
 <?import java.net.URL?>
 
 <!-- Main game screen. GuiController is the brain behind this layout.
-     Root is a BorderPane: the centre holds the board area, the right side
-     is reserved for HUD elements (score, level, combo, etc.). -->
-<BorderPane fx:controller="com.comp2042.GuiController"
-            xmlns:fx="http://javafx.com/fxml">
+     Root StackPane fills the window; a centred VBox groups all game UI
+     so it feels like a single machine panel in the middle. -->
+<StackPane fx:controller="com.comp2042.GuiController"
+           xmlns:fx="http://javafx.com/fxml">
 
-    <!-- Centre: game board, falling pieces, notifications and pause overlay. -->
-    <center>
-        <Group>
+    <children>
+        <!-- Vertical layout in the centre: TOP HUD row, BOARD, BOTTOM HUD row. -->
+        <VBox alignment="CENTER" spacing="30.0">
             <children>
 
-                <!-- Grid used to display the current falling brick. -->
-                <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
+                <!-- TOP HUD row: placeholder for HOLD (left, future) and NEXT (right). -->
+                <HBox alignment="CENTER" spacing="80.0">
+                    <!-- Left placeholder panel for future HOLD (no fx:id yet). -->
+                    <VBox spacing="10.0" alignment="TOP_CENTER">
+                        <padding>
+                            <Insets top="10.0" left="0.0" right="0.0" bottom="0.0"/>
+                        </padding>
+                        <children>
+                            <Label text="HOLD"
+                                   styleClass="nextBrickLabel"/>
+                            <Pane prefWidth="88.0"
+                                  prefHeight="88.0"
+                                  styleClass="nextBrick"/>
+                        </children>
+                    </VBox>
 
-                <!-- Outer frame for the main board (border, glow, etc.). -->
-                <BorderPane styleClass="gameBoard" fx:id="gameBoard">
-                    <center>
-                        <!-- Actual 10xN board where the pieces fall. -->
-                        <GridPane fx:id="gamePanel"
-                                  hgap="1" vgap="1"
-                                  layoutY="30.0" layoutX="40.0"/>
-                    </center>
-                </BorderPane>
+                    <!-- NEXT preview panel (already wired in GuiController). -->
+                    <VBox spacing="10.0" alignment="TOP_CENTER">
+                        <padding>
+                            <Insets top="10.0" left="0.0" right="0.0" bottom="0.0"/>
+                        </padding>
+                        <children>
+                            <Label text="NEXT" styleClass="nextBrickLabel"/>
+                            <GridPane fx:id="nextBrickPanel"
+                                      hgap="1" vgap="1"
+                                      styleClass="nextBrick"/>
+                        </children>
+                    </VBox>
+                </HBox>
 
-                <!-- Used for pop-up messages (score, etc.) and the GameOverPanel. -->
-                <Group fx:id="groupNotification" layoutX="14.0" layoutY="203.0">
+                <!-- CENTRE: game board, falling pieces, notifications and pause overlay. -->
+                <Group>
                     <children>
-                        <VBox alignment="CENTER">
-                            <GameOverPanel fx:id="gameOverPanel"/>
-                        </VBox>
+
+                        <!-- Grid used to display the current falling brick. -->
+                        <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
+
+                        <!-- Outer frame for the main board (border, glow, etc.). -->
+                        <BorderPane styleClass="gameBoard" fx:id="gameBoard">
+                            <center>
+                                <!-- Actual 10xN board where the pieces fall. -->
+                                <GridPane fx:id="gamePanel"
+                                          hgap="1" vgap="1"
+                                          layoutY="30.0" layoutX="40.0"/>
+                            </center>
+                        </BorderPane>
+
+                        <!-- Used for pop-up messages (score, etc.) and the GameOverPanel. -->
+                        <Group fx:id="groupNotification" layoutX="14.0" layoutY="203.0">
+                            <children>
+                                <VBox alignment="CENTER">
+                                    <GameOverPanel fx:id="gameOverPanel"/>
+                                </VBox>
+                            </children>
+                        </Group>
+
+                        <!-- Pause overlay: dim background + small pause menu. Always on top. -->
+                        <Pane fx:id="pauseOverlay"
+                              layoutX="0.0" layoutY="0.0"
+                              prefWidth="400.0" prefHeight="500.0"
+                              visible="false"
+                              style="-fx-background-color: rgba(0,0,0,0.5);">
+                            <children>
+                                <VBox alignment="CENTER" spacing="10" layoutX="60.0" layoutY="180.0">
+                                    <Label text="PAUSED" styleClass="gameOverStyle"/>
+
+                                    <!-- Buttons only have fx:id; actions are wired in GuiController. -->
+                                    <Button fx:id="resumeButton"
+                                            text="Resume"
+                                            styleClass="ipad-dark-grey"/>
+
+                                    <Button fx:id="restartButton"
+                                            text="Restart"
+                                            styleClass="ipad-dark-grey"/>
+
+                                    <Button fx:id="pauseMenuButton"
+                                            text="Main Menu"
+                                            styleClass="ipad-dark-grey"/>
+                                </VBox>
+                            </children>
+                        </Pane>
+
                     </children>
                 </Group>
 
-                <!-- Pause overlay: dim background + small pause menu. Always on top. -->
-                <Pane fx:id="pauseOverlay"
-                      layoutX="0.0" layoutY="0.0"
-                      prefWidth="400.0" prefHeight="500.0"
-                      visible="false"
-                      style="-fx-background-color: rgba(0,0,0,0.5);">
-                    <children>
-                        <VBox alignment="CENTER" spacing="10" layoutX="60.0" layoutY="180.0">
-                            <Label text="PAUSED" styleClass="gameOverStyle"/>
+                <!-- BOTTOM HUD row: score / level / combo / danger in a compact card.
+                     Later we can split this into left/right panels (e.g. timer vs score). -->
+                <HBox alignment="CENTER" spacing="80.0">
+                    <VBox spacing="5.0" alignment="TOP_LEFT" styleClass="hud-box">
+                        <padding>
+                            <Insets top="10.0" right="20.0" bottom="0.0" left="20.0"/>
+                        </padding>
+                        <children>
+                            <Text fx:id="scoreText" text="Score 0" styleClass="hud-value"/>
+                            <Text fx:id="levelText" text="Level 1" styleClass="hud-value"/>
+                            <Text fx:id="comboText" text="Combo x0" styleClass="hud-value"/>
+                            <Text fx:id="dangerText"
+                                  text="DANGER!"
+                                  visible="false"
+                                  styleClass="dangerText hud-value hud-danger"/>
+                        </children>
+                    </VBox>
+                </HBox>
 
-                            <!-- Buttons only have fx:id; actions are wired in GuiController. -->
-                            <Button fx:id="resumeButton"
-                                    text="Resume"
-                                    styleClass="ipad-dark-grey"/>
-
-                            <Button fx:id="restartButton"
-                                    text="Restart"
-                                    styleClass="ipad-dark-grey"/>
-
-                            <Button fx:id="pauseMenuButton"
-                                    text="Main Menu"
-                                    styleClass="ipad-dark-grey"/>
-                        </VBox>
-                    </children>
-                </Pane>
-
-            </children>
-        </Group>
-    </center>
-
-    <!-- Right HUD column: score / level / combo / danger.
-         This keeps stats in a fixed side panel instead of floating near the board. -->
-    <right>
-        <VBox spacing="5.0" alignment="TOP_LEFT">
-            <padding>
-                <!-- Push HUD down a bit from the top and away from the edge. -->
-                <Insets top="60.0" right="40.0" bottom="0.0" left="0.0"/>
-            </padding>
-            <children>
-                <Text fx:id="scoreText" text="Score 0"/>
-                <Text fx:id="levelText" text="Level 1"/>
-                <Text fx:id="comboText" text="Combo x0"/>
-                <Text fx:id="dangerText" text="DANGER!"
-                      visible="false"
-                      styleClass="dangerText"/>
             </children>
         </VBox>
-    </right>
+    </children>
 
     <!-- Global styles for this scene (board border, fonts, colours, etc.). -->
     <stylesheets>
         <URL value="@window_style.css"/>
     </stylesheets>
-</BorderPane>
+</StackPane>

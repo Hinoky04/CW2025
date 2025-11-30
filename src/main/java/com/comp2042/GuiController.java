@@ -34,6 +34,9 @@ public class GuiController implements Initializable {
     // Increased for Phase 7.2 so the board feels larger on fullscreen displays.
     private static final int BRICK_SIZE = 26;
 
+    // Preview brick size for the NEXT panel (slightly smaller than main board).
+    private static final int NEXT_BRICK_SIZE = 20;
+
     // Number of hidden rows at the top of the board (spawn area).
     private static final int HIDDEN_TOP_ROWS = 2;
 
@@ -62,6 +65,9 @@ public class GuiController implements Initializable {
 
     @FXML
     private GridPane brickPanel;         // grid used to display current piece
+
+    @FXML
+    private GridPane nextBrickPanel;     // grid used to display NEXT preview
 
     @FXML
     private GameOverPanel gameOverPanel; // overlay shown when the game ends
@@ -99,6 +105,9 @@ public class GuiController implements Initializable {
 
     // Current falling piece cells.
     private Rectangle[][] rectangles;
+
+    // NEXT preview cells.
+    private Rectangle[][] nextBrickRectangles;
 
     // Listener that sends user input events to the game logic.
     private InputEventListener eventListener;
@@ -308,6 +317,7 @@ public class GuiController implements Initializable {
     public void initGameView(int[][] boardMatrix, ViewData brick) {
         initBackgroundCells(boardMatrix);
         initFallingBrick(brick);
+        initNextBrick(brick);
         startAutoDropTimer();
     }
 
@@ -343,6 +353,61 @@ public class GuiController implements Initializable {
         }
         // Position the brickPanel according to the starting brick position.
         updateBrickPanelPosition(brick);
+    }
+
+    /**
+     * Creates rectangles for the NEXT preview panel.
+     */
+    private void initNextBrick(ViewData brick) {
+        if (nextBrickPanel == null) {
+            return;
+        }
+        int[][] nextData = brick.getNextBrickData();
+        if (nextData == null || nextData.length == 0 || nextData[0].length == 0) {
+            return;
+        }
+
+        nextBrickRectangles = new Rectangle[nextData.length][nextData[0].length];
+        nextBrickPanel.getChildren().clear();
+
+        for (int row = 0; row < nextData.length; row++) {
+            for (int col = 0; col < nextData[row].length; col++) {
+                Rectangle cell = new Rectangle(NEXT_BRICK_SIZE, NEXT_BRICK_SIZE);
+                cell.setFill(getFillColor(nextData[row][col]));
+                nextBrickRectangles[row][col] = cell;
+                nextBrickPanel.add(cell, col, row);
+            }
+        }
+    }
+
+    /**
+     * Updates the NEXT preview colours based on the latest view data.
+     */
+    private void refreshNextBrick(ViewData brick) {
+        if (nextBrickPanel == null) {
+            return;
+        }
+        int[][] nextData = brick.getNextBrickData();
+        if (nextData == null || nextData.length == 0 || nextData[0].length == 0) {
+            return;
+        }
+
+        // If rectangles were not initialised (e.g. late injection), initialise now.
+        if (nextBrickRectangles == null
+                || nextBrickRectangles.length != nextData.length
+                || nextBrickRectangles[0].length != nextData[0].length) {
+            initNextBrick(brick);
+            return;
+        }
+
+        for (int row = 0; row < nextData.length; row++) {
+            for (int col = 0; col < nextData[row].length; col++) {
+                Rectangle rect = nextBrickRectangles[row][col];
+                if (rect != null) {
+                    rect.setFill(getFillColor(nextData[row][col]));
+                }
+            }
+        }
     }
 
     /**
@@ -463,6 +528,9 @@ public class GuiController implements Initializable {
                     setRectangleData(brickData[row][col], rectangles[row][col]);
                 }
             }
+
+            // NEXT preview uses the same view data; update alongside the main brick.
+            refreshNextBrick(brick);
         }
     }
 
@@ -517,7 +585,7 @@ public class GuiController implements Initializable {
                 notificationPanel.showScore(groupNotification.getChildren());
             }
 
-            // Update the brick's position/shape.
+            // Update the brick's position/shape and NEXT preview.
             refreshBrick(downData.getViewData());
         }
 
