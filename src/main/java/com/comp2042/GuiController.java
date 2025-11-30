@@ -31,7 +31,8 @@ import java.util.ResourceBundle;
 public class GuiController implements Initializable {
 
     // Size of each cell (brick) in the grid, in pixels.
-    private static final int BRICK_SIZE = 20;
+    // Increased for Phase 7.2 so the board feels larger on fullscreen displays.
+    private static final int BRICK_SIZE = 26;
 
     // Number of hidden rows at the top of the board (spawn area).
     private static final int HIDDEN_TOP_ROWS = 2;
