@@ -31,10 +31,9 @@ import java.util.ResourceBundle;
 public class GuiController implements Initializable {
 
     // Size of each cell (brick) in the grid, in pixels.
-    // Increased for Phase 7.2 so the board feels larger on fullscreen displays.
     private static final int BRICK_SIZE = 26;
 
-    // Preview brick size for the NEXT / HOLD panels (slightly smaller than main board).
+    // Preview brick size for the NEXT / HOLD panels.
     private static final int NEXT_BRICK_SIZE = 20;
 
     // Number of hidden rows at the top of the board (spawn area).
@@ -82,6 +81,9 @@ public class GuiController implements Initializable {
     private BorderPane gameBoard;        // outer border of the board (for danger style)
 
     @FXML
+    private Text modeText;               // shows current mode in the HUD
+
+    @FXML
     private Text scoreText;              // shows current score in the HUD
 
     @FXML
@@ -89,6 +91,12 @@ public class GuiController implements Initializable {
 
     @FXML
     private Text timerText;              // shows elapsed time in the HUD
+
+    @FXML
+    private Text progressText;           // generic progress line (Rush / Survival, etc.)
+
+    @FXML
+    private Text bestText;               // best score / time info
 
     @FXML
     private Text comboText;              // shows current combo multiplier
@@ -150,6 +158,16 @@ public class GuiController implements Initializable {
     private long timerPausedAccumNanos;
     private boolean timerRunning;
 
+    // === Best records (static so they survive across runs) ===
+    private static final int[] bestScores = new int[GameMode.values().length];
+    private static final double[] bestRushTimes = new double[GameMode.values().length];
+
+    static {
+        for (int i = 0; i < bestRushTimes.length; i++) {
+            bestRushTimes[i] = -1.0; // no record yet
+        }
+    }
+
     /**
      * Called from Main.showGameScene() so this controller can access
      * navigation methods like showMainMenu().
@@ -163,8 +181,13 @@ public class GuiController implements Initializable {
      * Used when restarting the same mode.
      */
     void setGameMode(GameMode mode) {
-        // Fallback to CLASSIC so restartSameMode() always has a valid mode.
         this.currentMode = (mode != null) ? mode : GameMode.CLASSIC;
+
+        if (modeText != null && this.currentMode != null) {
+            modeText.setText("Mode: " + this.currentMode.getDisplayName());
+        }
+        clearProgressText();
+        refreshBestInfoForMode(this.currentMode);
     }
 
     /**
@@ -183,7 +206,6 @@ public class GuiController implements Initializable {
             gameOverPanel.setVisible(newState == GameState.GAME_OVER);
         }
 
-        // Once the game is over, we hide the danger warning.
         if (newState == GameState.GAME_OVER) {
             setDanger(false);
         }
@@ -210,60 +232,38 @@ public class GuiController implements Initializable {
 
         // Pause overlay buttons.
         if (resumeButton != null) {
-            System.out.println("DEBUG: resumeButton injected");
-            resumeButton.setOnAction(e -> {
-                System.out.println("DEBUG: Resume clicked");
-                togglePause();
-            });
-        } else {
-            System.out.println("DEBUG: resumeButton is NULL");
+            resumeButton.setOnAction(e -> togglePause());
         }
-
         if (restartButton != null) {
-            System.out.println("DEBUG: restartButton injected");
-            restartButton.setOnAction(e -> {
-                System.out.println("DEBUG: Restart clicked");
-                restartSameMode();
-            });
-        } else {
-            System.out.println("DEBUG: restartButton is NULL");
+            restartButton.setOnAction(e -> restartSameMode());
         }
-
         if (pauseMenuButton != null) {
-            System.out.println("DEBUG: pauseMenuButton injected");
-            pauseMenuButton.setOnAction(e -> {
-                System.out.println("DEBUG: Pause Main Menu clicked");
-                backToMainMenu();
-            });
-        } else {
-            System.out.println("DEBUG: pauseMenuButton is NULL");
+            pauseMenuButton.setOnAction(e -> backToMainMenu());
         }
 
-        // Make sure pause overlay can receive mouse events.
         if (pauseOverlay != null) {
             pauseOverlay.setMouseTransparent(false);
         }
 
-        // Start in PLAYING state (no overlays visible).
         setGameState(GameState.PLAYING);
-
-        // Danger HUD starts hidden.
         setDanger(false);
 
-        // Timer starts blank until a mode with showTimer=true is applied.
         if (timerText != null) {
             timerText.setText("");
+        }
+        clearProgressText();
+
+        if (bestText != null) {
+            bestText.setText("Best Score 0");
         }
     }
 
     /**
      * Centralised key handler.
-     * Handles pause (P / ESC), restart (N), and forwards movement/hold only while playing.
      */
     private void handleKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
 
-        // Special handling when the game has finished.
         if (gameState == GameState.GAME_OVER) {
             handleGameOverKey(event);
             return;
@@ -283,7 +283,6 @@ public class GuiController implements Initializable {
             return;
         }
 
-        // Movement, rotation and hold only allowed while playing.
         if (!canHandleInput()) {
             return;
         }
@@ -308,7 +307,6 @@ public class GuiController implements Initializable {
 
         // HOLD: use C to hold/swap the current piece.
         if (code == KeyCode.C) {
-            // EventType is not used by onHoldEvent, so we reuse DOWN as a placeholder.
             refreshBrick(eventListener.onHoldEvent(
                     new MoveEvent(EventType.DOWN, EventSource.USER)));
             event.consume();
@@ -322,7 +320,6 @@ public class GuiController implements Initializable {
 
     /**
      * Key handling when the game has finished.
-     * R = restart same mode, M or ESC = back to main menu.
      */
     private void handleGameOverKey(KeyEvent event) {
         KeyCode code = event.getCode();
@@ -336,9 +333,6 @@ public class GuiController implements Initializable {
         }
     }
 
-    /**
-     * We only handle movement input while the game is actively playing.
-     */
     private boolean canHandleInput() {
         return gameState == GameState.PLAYING;
     }
@@ -355,9 +349,6 @@ public class GuiController implements Initializable {
         startHudTimerIfNeeded();
     }
 
-    /**
-     * Creates rectangles for the background board and adds them to the gamePanel.
-     */
     private void initBackgroundCells(int[][] boardMatrix) {
         displayMatrix = new Rectangle[boardMatrix.length][boardMatrix[0].length];
         for (int row = HIDDEN_TOP_ROWS; row < boardMatrix.length; row++) {
@@ -365,15 +356,11 @@ public class GuiController implements Initializable {
                 Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
                 cell.setFill(Color.TRANSPARENT);
                 displayMatrix[row][col] = cell;
-                // Skip hidden top rows when adding to the visible grid.
                 gamePanel.add(cell, col, row - HIDDEN_TOP_ROWS);
             }
         }
     }
 
-    /**
-     * Creates rectangles for the current falling brick and positions the brickPanel.
-     */
     private void initFallingBrick(ViewData brick) {
         int[][] brickData = brick.getBrickData();
         rectangles = new Rectangle[brickData.length][brickData[0].length];
@@ -385,13 +372,9 @@ public class GuiController implements Initializable {
                 brickPanel.add(cell, col, row);
             }
         }
-        // Position the brickPanel according to the starting brick position.
         updateBrickPanelPosition(brick);
     }
 
-    /**
-     * Creates rectangles for the NEXT preview panel.
-     */
     private void initNextBrick(ViewData brick) {
         if (nextBrickPanel == null) {
             return;
@@ -414,10 +397,6 @@ public class GuiController implements Initializable {
         }
     }
 
-    /**
-     * Creates rectangles for the HOLD preview panel.
-     * If no brick is held yet, the panel remains empty.
-     */
     private void initHoldBrick(ViewData brick) {
         if (holdBrickPanel == null) {
             return;
@@ -443,9 +422,6 @@ public class GuiController implements Initializable {
         }
     }
 
-    /**
-     * Updates the NEXT preview colours based on the latest view data.
-     */
     private void refreshNextBrick(ViewData brick) {
         if (nextBrickPanel == null) {
             return;
@@ -455,7 +431,6 @@ public class GuiController implements Initializable {
             return;
         }
 
-        // If rectangles were not initialised (e.g. late injection), initialise now.
         if (nextBrickRectangles == null
                 || nextBrickRectangles.length != nextData.length
                 || nextBrickRectangles[0].length != nextData[0].length) {
@@ -473,10 +448,6 @@ public class GuiController implements Initializable {
         }
     }
 
-    /**
-     * Updates the HOLD preview colours based on the latest view data.
-     * Clears the panel if there is no held brick.
-     */
     private void refreshHoldBrick(ViewData brick) {
         if (holdBrickPanel == null) {
             return;
@@ -506,9 +477,6 @@ public class GuiController implements Initializable {
         }
     }
 
-    /**
-     * Creates and starts the automatic down-movement timer.
-     */
     private void startAutoDropTimer() {
         timeLine = new Timeline(new KeyFrame(
                 Duration.millis(fallIntervalMs),
@@ -518,9 +486,6 @@ public class GuiController implements Initializable {
         timeLine.play();
     }
 
-    /**
-     * Starts the HUD timer if the current mode has showTimer enabled.
-     */
     private void startHudTimerIfNeeded() {
         if (!timerEnabled || timerText == null) {
             return;
@@ -542,13 +507,9 @@ public class GuiController implements Initializable {
         hudTimer.setCycleCount(Timeline.INDEFINITE);
         hudTimer.play();
 
-        // Initialise display.
         timerText.setText("Time 00:00");
     }
 
-    /**
-     * Updates the timerText based on the elapsed time, excluding paused periods.
-     */
     private void updateTimerText() {
         if (!timerEnabled || timerText == null || timerStartNanos == 0L) {
             return;
@@ -576,9 +537,6 @@ public class GuiController implements Initializable {
         timerText.setText(String.format("Time %02d:%02d", minutes, seconds));
     }
 
-    /**
-     * Moves the brickPanel to match the brick's logical x/y position.
-     */
     private void updateBrickPanelPosition(ViewData brick) {
         double x = gamePanel.getLayoutX()
                 + brick.getxPosition() * brickPanel.getVgap()
@@ -593,10 +551,6 @@ public class GuiController implements Initializable {
         brickPanel.setLayoutY(y);
     }
 
-    /**
-     * Converts an integer code into a Color/Paint for rendering.
-     * Used for active pieces and as the base colour for background cells.
-     */
     private Paint getFillColor(int value) {
         switch (value) {
             case 0:
@@ -620,10 +574,6 @@ public class GuiController implements Initializable {
         }
     }
 
-    /**
-     * Applies dimming to a base colour using the given factor.
-     * Only used for landed blocks in the background in Hyper mode.
-     */
     private Paint applyDimFactor(Paint base, double factor) {
         if (!(base instanceof Color)) {
             return base;
@@ -650,28 +600,19 @@ public class GuiController implements Initializable {
         return value;
     }
 
-    /**
-     * Chooses the fill color for landed background blocks.
-     * In Hyper mode, landed blocks are drawn dimmer to make stacking harder to read.
-     */
     private Paint getBackgroundFillColor(int value) {
         Paint base = getFillColor(value);
 
-        // Keep empty cells transparent.
         if (value == 0) {
             return base;
         }
 
-        // Only dim in Hyper mode and only if a dim factor has been configured.
         if (currentMode == GameMode.HYPER && backgroundDimFactor < 1.0) {
             return applyDimFactor(base, backgroundDimFactor);
         }
         return base;
     }
 
-    /**
-     * Refreshes the visual representation of the current brick.
-     */
     private void refreshBrick(ViewData brick) {
         if (gameState == GameState.PLAYING) {
             updateBrickPanelPosition(brick);
@@ -683,54 +624,36 @@ public class GuiController implements Initializable {
                 }
             }
 
-            // NEXT and HOLD previews use the same view data.
             refreshNextBrick(brick);
             refreshHoldBrick(brick);
         }
     }
 
-    /**
-     * Refreshes the background board view from the board matrix
-     * and updates the danger state based on the top visible rows.
-     */
     public void refreshGameBackground(int[][] board) {
         for (int row = HIDDEN_TOP_ROWS; row < board.length; row++) {
             for (int col = 0; col < board[row].length; col++) {
                 setBackgroundRectangleData(board[row][col], displayMatrix[row][col]);
             }
         }
-
-        // After updating the visible board, recompute whether we are in danger.
         updateDangerFromBoard(board);
     }
 
-    /**
-     * Applies colour and rounded corners to a rectangle for the active piece.
-     */
     private void setRectangleData(int colorCode, Rectangle rectangle) {
         rectangle.setFill(getFillColor(colorCode));
         rectangle.setArcHeight(9);
         rectangle.setArcWidth(9);
     }
 
-    /**
-     * Applies colour and rounded corners to a rectangle for the background board.
-     * In Hyper mode, landed blocks are drawn dimmer using backgroundDimFactor.
-     */
     private void setBackgroundRectangleData(int colorCode, Rectangle rectangle) {
         rectangle.setFill(getBackgroundFillColor(colorCode));
         rectangle.setArcHeight(9);
         rectangle.setArcWidth(9);
     }
 
-    /**
-     * Called either by the timer (thread) or user soft drop.
-     */
     private void moveDown(MoveEvent event) {
         if (gameState == GameState.PLAYING) {
             DownData downData = eventListener.onDownEvent(event);
 
-            // If a row was cleared, show a score notification.
             if (downData.getClearRow() != null &&
                     downData.getClearRow().getLinesRemoved() > 0) {
 
@@ -740,11 +663,9 @@ public class GuiController implements Initializable {
                 notificationPanel.showScore(groupNotification.getChildren());
             }
 
-            // Update the brick's position/shape and NEXT/HOLD previews.
             refreshBrick(downData.getViewData());
         }
 
-        // Keep keyboard focus on the game panel.
         gamePanel.requestFocus();
     }
 
@@ -752,10 +673,6 @@ public class GuiController implements Initializable {
         this.eventListener = eventListener;
     }
 
-    /**
-     * Applies a GameConfig so the GUI uses mode-specific values.
-     * Called once from GameController when a new game starts.
-     */
     public void applyConfig(GameConfig config) {
         if (config == null) {
             return;
@@ -771,54 +688,36 @@ public class GuiController implements Initializable {
         }
     }
 
-    /**
-     * Binds the score property from the model to the score text in the HUD.
-     */
     public void bindScore(IntegerProperty scoreProperty) {
         if (scoreText != null) {
             scoreText.textProperty().bind(scoreProperty.asString("Score %d"));
         }
     }
 
-    /**
-     * Binds the level property from the model to the HUD and updates drop speed.
-     */
     public void bindLevel(IntegerProperty levelProperty) {
         if (levelText != null) {
             levelText.textProperty().bind(levelProperty.asString("Level %d"));
         }
 
-        // When level changes, adjust the drop speed.
         levelProperty.addListener((obs, oldLevel, newLevel) ->
                 onLevelChanged(newLevel.intValue()));
     }
 
-    /**
-     * Binds the combo property from the model to the HUD.
-     */
     public void bindCombo(IntegerProperty comboProperty) {
         if (comboText != null) {
             comboText.textProperty().bind(comboProperty.asString("Combo x%d"));
         }
     }
 
-    /**
-     * Adjusts the timeline speed when the level changes.
-     * Higher level = faster drop.
-     */
     private void onLevelChanged(int newLevel) {
         if (timeLine == null) {
             return;
         }
 
-        // Curve is driven by GameConfig; each level multiplies speed by this factor.
         double rate = 1.0 + (newLevel - 1) * levelSpeedFactor;
         timeLine.setRate(rate);
     }
 
-    /**
-     * Game over handler.
-     */
     public void gameOver() {
         if (timeLine != null) {
             timeLine.stop();
@@ -831,35 +730,21 @@ public class GuiController implements Initializable {
 
         setGameState(GameState.GAME_OVER);
 
-        // Once the game is over, we no longer need the falling brick visuals.
         if (brickPanel != null) {
             brickPanel.getChildren().clear();
         }
     }
 
-    /**
-     * Old "new game" button behaviour is now equivalent to restartSameMode().
-     * Kept for FXML or other callers that still reference this handler.
-     */
     public void newGame(javafx.event.ActionEvent actionEvent) {
         restartSameMode();
     }
 
-    /**
-     * Pause button handler in case it is used by toolbar or other UI elements.
-     */
     public void pauseGame(javafx.event.ActionEvent actionEvent) {
         togglePause();
     }
 
-    /**
-     * Core pause/resume behaviour.
-     * PLAYING -> PAUSED pauses the timeline and shows overlay.
-     * PAUSED  -> PLAYING resumes the timeline and hides overlay.
-     */
     private void togglePause() {
         if (timeLine == null) {
-            // Fallback: only toggle overlay if timeline is not ready.
             setGameState(gameState == GameState.PLAYING
                     ? GameState.PAUSED
                     : GameState.PLAYING);
@@ -896,10 +781,6 @@ public class GuiController implements Initializable {
         }
     }
 
-    /**
-     * Restart the current mode by reloading the whole game scene.
-     * This guarantees the same spawn position as a fresh start.
-     */
     private void restartSameMode() {
         if (mainApp == null || currentMode == null) {
             return;
@@ -915,9 +796,6 @@ public class GuiController implements Initializable {
         mainApp.showGameScene(currentMode);
     }
 
-    /**
-     * Common helper for leaving the game screen and returning to the main menu.
-     */
     private void backToMainMenu() {
         if (timeLine != null) {
             timeLine.stop();
@@ -930,9 +808,6 @@ public class GuiController implements Initializable {
         }
     }
 
-    /**
-     * Updates the danger state based on the contents of the board matrix.
-     */
     private void updateDangerFromBoard(int[][] board) {
         boolean found = false;
 
@@ -954,12 +829,9 @@ public class GuiController implements Initializable {
         setDanger(found);
     }
 
-    /**
-     * Applies or removes danger visuals on the HUD and board.
-     */
     private void setDanger(boolean value) {
         if (isDanger.get() == value) {
-            return; // nothing to change
+            return;
         }
         isDanger.set(value);
 
@@ -974,6 +846,117 @@ public class GuiController implements Initializable {
             } else {
                 gameBoard.getStyleClass().remove("dangerBoard");
             }
+        }
+    }
+
+    // === Progress HUD helpers ===
+
+    public void clearProgressText() {
+        if (progressText != null) {
+            progressText.setText("");
+        }
+    }
+
+    public void updateRushProgress(int linesCleared, int targetLines) {
+        if (progressText == null) {
+            return;
+        }
+        if (targetLines <= 0) {
+            clearProgressText();
+            return;
+        }
+        progressText.setText(String.format("Lines %d / %d", linesCleared, targetLines));
+    }
+
+    public void updateSurvivalStatus(int shields, int landingsUntilGarbage) {
+        if (progressText == null) {
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Shields ").append(shields);
+
+        if (landingsUntilGarbage >= 0) {
+            sb.append(", Garbage in ").append(landingsUntilGarbage);
+        }
+
+        progressText.setText(sb.toString());
+    }
+
+    // === Best record HUD helpers ===
+
+    /**
+     * Updates best score and best Rush-40 time for the given mode.
+     * Called from GameController when a run ends.
+     */
+    public void updateBestInfo(GameMode mode, int finalScore, double rushCompletionSeconds) {
+        if (mode == null) {
+            return;
+        }
+        int index = mode.ordinal();
+
+        boolean newBestScore = false;
+        boolean newBestTime = false;
+
+        if (finalScore > bestScores[index]) {
+            bestScores[index] = finalScore;
+            newBestScore = true;
+        }
+
+        if (mode == GameMode.RUSH_40 && rushCompletionSeconds > 0.0) {
+            double currentBest = bestRushTimes[index];
+            if (currentBest < 0.0 || rushCompletionSeconds < currentBest) {
+                bestRushTimes[index] = rushCompletionSeconds;
+                newBestTime = true;
+            }
+        }
+
+        refreshBestInfoForMode(mode, newBestScore, newBestTime);
+    }
+
+    /**
+     * Refreshes best info for the given mode without highlighting.
+     * Called when a new game starts so the player can see their targets.
+     */
+    public void refreshBestInfoForMode(GameMode mode) {
+        refreshBestInfoForMode(mode, false, false);
+    }
+
+    private void refreshBestInfoForMode(GameMode mode, boolean highlightNewScore, boolean highlightNewTime) {
+        if (bestText == null || mode == null) {
+            return;
+        }
+
+        int index = mode.ordinal();
+        int bestScore = bestScores[index];
+
+        if (mode == GameMode.RUSH_40) {
+            double bestTime = bestRushTimes[index];
+            String timePart;
+            if (bestTime > 0.0) {
+                long totalSeconds = (long) bestTime;
+                long minutes = totalSeconds / 60;
+                long seconds = totalSeconds % 60;
+                timePart = String.format("%02d:%02d", minutes, seconds);
+            } else {
+                timePart = "--:--";
+            }
+
+            StringBuilder text = new StringBuilder();
+            text.append("Best Score ").append(bestScore);
+            text.append(", Time ").append(timePart);
+
+            if (highlightNewScore || highlightNewTime) {
+                text.append(" (New!)");
+            }
+            bestText.setText(text.toString());
+        } else {
+            StringBuilder text = new StringBuilder();
+            text.append("Best Score ").append(bestScore);
+            if (highlightNewScore) {
+                text.append(" (New!)");
+            }
+            bestText.setText(text.toString());
         }
     }
 }

@@ -80,7 +80,8 @@ public class GameController implements InputEventListener {
         board.createNewBrick();
         guiController.setEventListener(this);
 
-        // Tell GUI which mode we are running so restart uses the same mode.
+        // Tell GUI which mode we are running so restart uses the same mode
+        // and the HUD mode label is updated.
         guiController.setGameMode(gameMode);
 
         // Apply mode-specific config (speed curve, danger rows, etc.).
@@ -101,6 +102,34 @@ public class GameController implements InputEventListener {
             rushLinesCleared = 0;
             rushCompleted = false;
         }
+
+        // Initialise the progress HUD for this mode (Rush / Survival).
+        initialiseProgressHud(score);
+    }
+
+    /**
+     * Initialises the generic progress HUD line depending on the current mode.
+     * - Rush-40: shows "Lines 0 / target".
+     * - Survival: shows "Shields S, Garbage in N".
+     * - Other modes: clears the progress text.
+     */
+    private void initialiseProgressHud(Score score) {
+        if (rushModeActive && rushTargetLines > 0) {
+            guiController.updateRushProgress(rushLinesCleared, rushTargetLines);
+            return;
+        }
+
+        if (gameMode == GameMode.SURVIVAL) {
+            int baseThreshold = config.getMaxNoClearBeforeGarbage();
+            if (baseThreshold > 0) {
+                updateSurvivalHud(score, baseThreshold);
+            } else {
+                guiController.updateSurvivalStatus(survivalShields, -1);
+            }
+            return;
+        }
+
+        guiController.clearProgressText();
     }
 
     @Override
@@ -109,15 +138,137 @@ public class GameController implements InputEventListener {
         ClearRow clearRow = null;
 
         if (!moved) {
-            // Brick has landed: merge, clear rows, maybe Survival / Rush-40 effects.
             clearRow = handleBrickLanded();
         } else if (event.getEventSource() == EventSource.USER) {
-            // User soft drop gives a small score bonus.
             board.getScore().add(1);
         }
 
-        // GUI only needs cleared-row info + new brick view data.
         return new DownData(clearRow, board.getViewData());
+    }
+
+    /**
+     * Survival-mode behaviour: dynamic garbage pressure and shields.
+     */
+    private void handleSurvivalEffects(ClearRow clearRow, Score score) {
+        if (gameMode != GameMode.SURVIVAL) {
+            return;
+        }
+
+        int baseThreshold = config.getMaxNoClearBeforeGarbage();
+        if (baseThreshold <= 0) {
+            return;
+        }
+
+        int linesRemoved = (clearRow != null) ? clearRow.getLinesRemoved() : 0;
+
+        if (linesRemoved >= 4) {
+            survivalShields++;
+            if (survivalShields > SURVIVAL_MAX_SHIELDS) {
+                survivalShields = SURVIVAL_MAX_SHIELDS;
+            }
+        }
+
+        int threshold = computeSurvivalGarbageThreshold(score, baseThreshold);
+
+        if (linesRemoved > 0) {
+            survivalNoClearLandingCount = 0;
+        } else {
+            survivalNoClearLandingCount++;
+        }
+
+        if (survivalNoClearLandingCount >= threshold) {
+            if (survivalShields > 0) {
+                survivalShields--;
+            } else {
+                board.addGarbageRow();
+            }
+            survivalNoClearLandingCount = 0;
+        }
+
+        updateSurvivalHud(score, baseThreshold);
+    }
+
+    /**
+     * Computes the current survival garbage threshold based on the base config
+     * and the player's level.
+     */
+    private int computeSurvivalGarbageThreshold(Score score, int baseThreshold) {
+        int level = score.getLevel();
+        int reduction = (level - 1) / 3;
+        int threshold = baseThreshold - reduction;
+
+        if (threshold < 1) {
+            threshold = 1;
+        }
+        if (threshold > baseThreshold) {
+            threshold = baseThreshold;
+        }
+        return threshold;
+    }
+
+    /**
+     * Updates the Survival progress HUD, e.g. "Shields 2, Garbage in 1".
+     */
+    private void updateSurvivalHud(Score score, int baseThreshold) {
+        int threshold = computeSurvivalGarbageThreshold(score, baseThreshold);
+        int landingsUntilGarbage = threshold - survivalNoClearLandingCount;
+        if (landingsUntilGarbage < 0) {
+            landingsUntilGarbage = 0;
+        }
+        guiController.updateSurvivalStatus(survivalShields, landingsUntilGarbage);
+    }
+
+    /**
+     * Runs when the falling brick can no longer move down.
+     */
+    private ClearRow handleBrickLanded() {
+        board.mergeBrickToBackground();
+
+        ClearRow clearRow = board.clearRows();
+        Score score = board.getScore();
+
+        if (clearRow != null && clearRow.getLinesRemoved() > 0) {
+            score.registerLinesCleared(
+                    clearRow.getLinesRemoved(),
+                    clearRow.getScoreBonus()
+            );
+        } else {
+            score.registerLandingWithoutClear();
+        }
+
+        handleSurvivalEffects(clearRow, score);
+
+        // Rush-40 goal logic.
+        if (rushModeActive && !rushCompleted && clearRow != null && clearRow.getLinesRemoved() > 0) {
+            rushLinesCleared += clearRow.getLinesRemoved();
+
+            guiController.updateRushProgress(rushLinesCleared, rushTargetLines);
+
+            if (rushLinesCleared >= rushTargetLines) {
+                rushCompleted = true;
+                rushEndNanos = System.nanoTime();
+
+                double completionSeconds = getRushCompletionTimeSeconds();
+                int finalScore = score.scoreProperty().get();
+                guiController.updateBestInfo(gameMode, finalScore, completionSeconds);
+
+                guiController.gameOver();
+                guiController.refreshGameBackground(board.getBoardMatrix());
+                return clearRow;
+            }
+        }
+
+        // Normal spawn / game over.
+        if (board.createNewBrick()) {
+            double completionSeconds = getRushCompletionTimeSeconds();
+            int finalScore = score.scoreProperty().get();
+            guiController.updateBestInfo(gameMode, finalScore, completionSeconds);
+
+            guiController.gameOver();
+        }
+
+        guiController.refreshGameBackground(board.getBoardMatrix());
+        return clearRow;
     }
 
     @Override
@@ -139,169 +290,33 @@ public class GameController implements InputEventListener {
     }
 
     /**
-     * Triggered when the player requests a hold action.
-     * Delegates to the board and applies normal game-over handling
-     * if the new active brick immediately collides.
+     * HOLD input handler.
      */
     @Override
     public ViewData onHoldEvent(MoveEvent event) {
-        boolean collision = board.holdCurrentBrick();
-        if (collision) {
-            guiController.gameOver();
-            guiController.refreshGameBackground(board.getBoardMatrix());
-        }
+        board.holdCurrentBrick();
         return board.getViewData();
     }
 
     @Override
     public void createNewGame() {
-        // Reset survival-specific state.
         survivalNoClearLandingCount = 0;
         survivalShields = 0;
 
-        // Reset Rush-40 state. Only meaningful if rushModeActive is true.
         rushLinesCleared = 0;
         rushCompleted = false;
         rushEndNanos = 0L;
         rushStartNanos = rushModeActive ? System.nanoTime() : 0L;
 
-        // Reset the board state for completeness.
-        // Restart from menu now reloads the whole scene via GuiController,
-        // but this is kept for the 'N' shortcut inside the game.
         board.newGame();
 
-        // Update background in case someone calls this in the future.
         guiController.refreshGameBackground(board.getBoardMatrix());
-    }
-
-    /**
-     * Survival-mode behaviour: dynamic garbage pressure and shields.
-     * - Garbage rows appear after several non-clearing landings.
-     * - Clearing four lines at once grants a shield that blocks
-     *   the next garbage event.
-     * Other modes ignore this logic.
-     */
-    private void handleSurvivalEffects(ClearRow clearRow, Score score) {
-        if (gameMode != GameMode.SURVIVAL) {
-            return;
-        }
-
-        int baseThreshold = config.getMaxNoClearBeforeGarbage();
-        if (baseThreshold <= 0) {
-            return; // feature disabled for this config
-        }
-
-        int linesRemoved = (clearRow != null) ? clearRow.getLinesRemoved() : 0;
-
-        // Reward big plays: a four-line clear grants a shield,
-        // capped so shields do not accumulate without limit.
-        if (linesRemoved >= 4) {
-            survivalShields++;
-            if (survivalShields > SURVIVAL_MAX_SHIELDS) {
-                survivalShields = SURVIVAL_MAX_SHIELDS;
-            }
-        }
-
-        int threshold = computeSurvivalGarbageThreshold(score, baseThreshold);
-
-        if (linesRemoved > 0) {
-            // Any clear breaks the no-clear streak and relieves pressure.
-            survivalNoClearLandingCount = 0;
-        } else {
-            // Landing without clearing increases pressure.
-            survivalNoClearLandingCount++;
-        }
-
-        if (survivalNoClearLandingCount >= threshold) {
-            if (survivalShields > 0) {
-                // Shield absorbs this scheduled garbage row.
-                survivalShields--;
-            } else {
-                // Inject a garbage row at the bottom of the board.
-                board.addGarbageRow();
-            }
-            // After triggering (or blocking) a garbage event, restart the counter.
-            survivalNoClearLandingCount = 0;
-        }
-    }
-
-    /**
-     * Computes the current survival garbage threshold based on the base config
-     * and the player's level. As level increases, the threshold decreases so
-     * garbage appears more frequently, down to a minimum of one landing.
-     */
-    private int computeSurvivalGarbageThreshold(Score score, int baseThreshold) {
-        int level = score.getLevel();
-        // Every three levels, reduce the threshold by one.
-        int reduction = (level - 1) / 3;
-        int threshold = baseThreshold - reduction;
-
-        if (threshold < 1) {
-            threshold = 1;
-        }
-        if (threshold > baseThreshold) {
-            threshold = baseThreshold;
-        }
-        return threshold;
-    }
-
-    /**
-     * Runs when the falling brick can no longer move down.
-     * - merges brick into the background
-     * - clears full rows and updates score/combo/level
-     * - applies Survival-specific logic (garbage and shields)
-     * - applies Rush-40 goal logic if enabled
-     * - spawns the next brick or ends the game if there is no space
-     */
-    private ClearRow handleBrickLanded() {
-        board.mergeBrickToBackground();
-
-        ClearRow clearRow = board.clearRows();
-        Score score = board.getScore();
-
-        if (clearRow != null && clearRow.getLinesRemoved() > 0) {
-            // Landing with a clear: update combo + score + level.
-            score.registerLinesCleared(
-                    clearRow.getLinesRemoved(),
-                    clearRow.getScoreBonus()
-            );
-        } else {
-            // Landing with no clear: break the combo chain.
-            score.registerLandingWithoutClear();
-        }
-
-        // Apply Survival-specific effects (garbage pressure and shields).
-        handleSurvivalEffects(clearRow, score);
-
-        // Apply Rush-40 goal, if enabled.
-        if (rushModeActive && !rushCompleted && clearRow != null && clearRow.getLinesRemoved() > 0) {
-            rushLinesCleared += clearRow.getLinesRemoved();
-            if (rushLinesCleared >= rushTargetLines) {
-                // Goal reached: stop the run and record completion time.
-                rushCompleted = true;
-                rushEndNanos = System.nanoTime();
-
-                // For now we reuse the standard game-over overlay.
-                // Phase 7 can provide a dedicated "You Win" message.
-                guiController.gameOver();
-                guiController.refreshGameBackground(board.getBoardMatrix());
-                return clearRow;
-            }
-        }
-
-        // Standard behaviour: spawn a new brick and check for normal game over.
-        if (board.createNewBrick()) {
-            guiController.gameOver();
-        }
-
-        guiController.refreshGameBackground(board.getBoardMatrix());
-        return clearRow;
+        initialiseProgressHud(board.getScore());
     }
 
     /**
      * Returns the Rush-40 completion time in seconds, or a negative value
      * if the current run has not finished or is not a Rush-40 game.
-     * This is intended for future HUD / result screen use.
      */
     public double getRushCompletionTimeSeconds() {
         if (!rushModeActive || !rushCompleted || rushStartNanos == 0L || rushEndNanos == 0L) {
