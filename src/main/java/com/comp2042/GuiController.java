@@ -88,6 +88,9 @@ public class GuiController implements Initializable {
     private Text levelText;              // shows current level in the HUD
 
     @FXML
+    private Text timerText;              // shows elapsed time in the HUD
+
+    @FXML
     private Text comboText;              // shows current combo multiplier
 
     @FXML
@@ -121,6 +124,9 @@ public class GuiController implements Initializable {
     // Timer for automatic down movement.
     private Timeline timeLine;
 
+    // HUD timer for elapsed time.
+    private Timeline hudTimer;
+
     // Single source of truth for the current game state.
     private GameState gameState = GameState.PLAYING;
 
@@ -136,6 +142,13 @@ public class GuiController implements Initializable {
 
     // Current game mode for this run (Classic / Survival, etc.).
     private GameMode currentMode;
+
+    // Timer configuration and state.
+    private boolean timerEnabled;
+    private long timerStartNanos;
+    private long timerPauseStartNanos;
+    private long timerPausedAccumNanos;
+    private boolean timerRunning;
 
     /**
      * Called from Main.showGameScene() so this controller can access
@@ -236,6 +249,11 @@ public class GuiController implements Initializable {
 
         // Danger HUD starts hidden.
         setDanger(false);
+
+        // Timer starts blank until a mode with showTimer=true is applied.
+        if (timerText != null) {
+            timerText.setText("");
+        }
     }
 
     /**
@@ -334,6 +352,7 @@ public class GuiController implements Initializable {
         initNextBrick(brick);
         initHoldBrick(brick);
         startAutoDropTimer();
+        startHudTimerIfNeeded();
     }
 
     /**
@@ -497,6 +516,64 @@ public class GuiController implements Initializable {
         ));
         timeLine.setCycleCount(Timeline.INDEFINITE);
         timeLine.play();
+    }
+
+    /**
+     * Starts the HUD timer if the current mode has showTimer enabled.
+     */
+    private void startHudTimerIfNeeded() {
+        if (!timerEnabled || timerText == null) {
+            return;
+        }
+
+        timerStartNanos = System.nanoTime();
+        timerPauseStartNanos = 0L;
+        timerPausedAccumNanos = 0L;
+        timerRunning = true;
+
+        if (hudTimer != null) {
+            hudTimer.stop();
+        }
+
+        hudTimer = new Timeline(new KeyFrame(
+                Duration.millis(200),
+                ae -> updateTimerText()
+        ));
+        hudTimer.setCycleCount(Timeline.INDEFINITE);
+        hudTimer.play();
+
+        // Initialise display.
+        timerText.setText("Time 00:00");
+    }
+
+    /**
+     * Updates the timerText based on the elapsed time, excluding paused periods.
+     */
+    private void updateTimerText() {
+        if (!timerEnabled || timerText == null || timerStartNanos == 0L) {
+            return;
+        }
+
+        long now = System.nanoTime();
+        long effectiveNanos;
+
+        if (timerRunning) {
+            effectiveNanos = now - timerStartNanos - timerPausedAccumNanos;
+        } else if (timerPauseStartNanos != 0L) {
+            effectiveNanos = timerPauseStartNanos - timerStartNanos - timerPausedAccumNanos;
+        } else {
+            effectiveNanos = now - timerStartNanos - timerPausedAccumNanos;
+        }
+
+        if (effectiveNanos < 0L) {
+            effectiveNanos = 0L;
+        }
+
+        long totalSeconds = effectiveNanos / 1_000_000_000L;
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+
+        timerText.setText(String.format("Time %02d:%02d", minutes, seconds));
     }
 
     /**
@@ -687,6 +764,11 @@ public class GuiController implements Initializable {
         this.levelSpeedFactor = config.getLevelSpeedFactor();
         this.dangerVisibleRows = config.getDangerVisibleRows();
         this.backgroundDimFactor = config.getBackgroundDimFactor();
+        this.timerEnabled = config.isShowTimer();
+
+        if (!timerEnabled && timerText != null) {
+            timerText.setText("");
+        }
     }
 
     /**
@@ -742,6 +824,11 @@ public class GuiController implements Initializable {
             timeLine.stop();
         }
 
+        if (hudTimer != null) {
+            hudTimer.stop();
+        }
+        timerRunning = false;
+
         setGameState(GameState.GAME_OVER);
 
         // Once the game is over, we no longer need the falling brick visuals.
@@ -782,10 +869,30 @@ public class GuiController implements Initializable {
         if (gameState == GameState.PLAYING) {
             timeLine.pause();
             setGameState(GameState.PAUSED);
+
+            if (timerEnabled && timerRunning) {
+                timerPauseStartNanos = System.nanoTime();
+                timerRunning = false;
+                if (hudTimer != null) {
+                    hudTimer.pause();
+                }
+            }
         } else if (gameState == GameState.PAUSED) {
             timeLine.play();
             setGameState(GameState.PLAYING);
             gamePanel.requestFocus();
+
+            if (timerEnabled && !timerRunning) {
+                if (timerPauseStartNanos != 0L) {
+                    long paused = System.nanoTime() - timerPauseStartNanos;
+                    timerPausedAccumNanos += paused;
+                    timerPauseStartNanos = 0L;
+                }
+                timerRunning = true;
+                if (hudTimer != null) {
+                    hudTimer.play();
+                }
+            }
         }
     }
 
@@ -801,6 +908,9 @@ public class GuiController implements Initializable {
         if (timeLine != null) {
             timeLine.stop();
         }
+        if (hudTimer != null) {
+            hudTimer.stop();
+        }
 
         mainApp.showGameScene(currentMode);
     }
@@ -811,6 +921,9 @@ public class GuiController implements Initializable {
     private void backToMainMenu() {
         if (timeLine != null) {
             timeLine.stop();
+        }
+        if (hudTimer != null) {
+            hudTimer.stop();
         }
         if (mainApp != null) {
             mainApp.showMainMenu();

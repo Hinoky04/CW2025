@@ -107,7 +107,7 @@
                     </children>
                 </Group>
 
-                <!-- BOTTOM HUD row: score / level / combo / danger in a compact card. -->
+                <!-- BOTTOM HUD row: score / level / time / combo / danger + controls hint. -->
                 <HBox alignment="CENTER" spacing="80.0">
                     <VBox spacing="5.0" alignment="TOP_LEFT" styleClass="hud-box">
                         <padding>
@@ -116,6 +116,7 @@
                         <children>
                             <Text fx:id="scoreText" text="Score 0" styleClass="hud-value"/>
                             <Text fx:id="levelText" text="Level 1" styleClass="hud-value"/>
+                            <Text fx:id="timerText" text="Time 00:00" styleClass="hud-value"/>
                             <Text fx:id="comboText" text="Combo x0" styleClass="hud-value"/>
                             <Text fx:id="dangerText"
                                   text="DANGER!"

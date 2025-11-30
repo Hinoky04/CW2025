@@ -55,13 +55,19 @@ public final class GameConfig {
      */
     private final int targetLinesToWin;
 
+    /**
+     * Whether this mode should display a running timer in the HUD.
+     */
+    private final boolean showTimer;
+
     private GameConfig(int baseFallIntervalMs,
                        double speedMultiplier,
                        double levelSpeedFactor,
                        int dangerVisibleRows,
                        double backgroundDimFactor,
                        int maxNoClearBeforeGarbage,
-                       int targetLinesToWin) {
+                       int targetLinesToWin,
+                       boolean showTimer) {
 
         this.baseFallIntervalMs = baseFallIntervalMs;
         this.speedMultiplier = speedMultiplier;
@@ -70,6 +76,7 @@ public final class GameConfig {
         this.backgroundDimFactor = backgroundDimFactor;
         this.maxNoClearBeforeGarbage = maxNoClearBeforeGarbage;
         this.targetLinesToWin = targetLinesToWin;
+        this.showTimer = showTimer;
     }
 
     // --- Factory: one config per GameMode ---
@@ -77,7 +84,7 @@ public final class GameConfig {
     public static GameConfig forMode(GameMode mode) {
         switch (mode) {
             case CLASSIC:
-                // Baseline tuning.
+                // Baseline tuning. No HUD timer by default.
                 return new GameConfig(
                         400,   // baseFallIntervalMs (ms)
                         1.0,   // speedMultiplier
@@ -85,11 +92,12 @@ public final class GameConfig {
                         3,     // dangerVisibleRows
                         1.0,   // backgroundDimFactor (no dimming)
                         0,     // maxNoClearBeforeGarbage (off)
-                        0      // targetLinesToWin (no target)
+                        0,     // targetLinesToWin (no target)
+                        false  // showTimer
                 );
             case SURVIVAL:
                 // Same basic speed as classic, with garbage pressure using
-                // maxNoClearBeforeGarbage. Background brightness stays normal.
+                // maxNoClearBeforeGarbage. Timer shows how long you survived.
                 return new GameConfig(
                         400,
                         1.0,
@@ -97,11 +105,13 @@ public final class GameConfig {
                         3,
                         1.0,   // backgroundDimFactor (no dimming)
                         4,     // after 4 non-clearing landings -> garbage
-                        0
+                        0,
+                        true   // showTimer
                 );
             case HYPER:
                 // Faster, more aggressive; background will be drawn dimmer
                 // using backgroundDimFactor to make stacking harder to read.
+                // Timer shows how long you can survive the chaos.
                 return new GameConfig(
                         350,   // slightly faster base speed
                         1.4,   // speedMultiplier
@@ -109,10 +119,12 @@ public final class GameConfig {
                         3,
                         0.35,  // backgroundDimFactor (landed blocks are dimmed)
                         0,
-                        0
+                        0,
+                        true   // showTimer
                 );
             case RUSH_40:
                 // Classic-like feel but with a 40-line goal.
+                // Timer is critical here to measure completion time.
                 return new GameConfig(
                         400,
                         1.0,
@@ -120,7 +132,8 @@ public final class GameConfig {
                         3,
                         1.0,   // backgroundDimFactor (no dimming)
                         0,
-                        40     // clear 40 lines to win
+                        40,    // clear 40 lines to win
+                        true   // showTimer
                 );
             default:
                 throw new IllegalArgumentException("Unknown mode: " + mode);
@@ -158,5 +171,9 @@ public final class GameConfig {
 
     public int getTargetLinesToWin() {
         return targetLinesToWin;
+    }
+
+    public boolean isShowTimer() {
+        return showTimer;
     }
 }
