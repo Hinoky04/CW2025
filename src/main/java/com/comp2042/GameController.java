@@ -17,17 +17,37 @@ public class GameController implements InputEventListener {
     private final Board board;
     private final GuiController guiController;
 
-    // Selected game mode for this run (Classic, Survival, etc.).
+    // Selected game mode for this run (Classic, Survival, Hyper, Rush-40).
     private final GameMode gameMode;
 
     // Immutable configuration derived from the chosen mode.
     private final GameConfig config;
 
-    // Survival-mode state: only used in GameMode.SURVIVAL.
-    // Counts consecutive landings with no cleared lines and how many
-    // garbage shields the player has earned.
+    // === Survival-mode state (only used when gameMode == SURVIVAL) ===
+
+    // Counts consecutive landings with no cleared lines.
     private int survivalNoClearLandingCount = 0;
+
+    // Shields that block scheduled garbage rows. Capped at SURVIVAL_MAX_SHIELDS.
     private int survivalShields = 0;
+
+    // === Rush-40 state (only used when gameMode == RUSH_40) ===
+
+    // True when this controller is running a Rush-40 game with a valid target.
+    private final boolean rushModeActive;
+
+    // Target number of lines to clear in Rush-40 (e.g. 40).
+    private final int rushTargetLines;
+
+    // Lines cleared so far in this Rush-40 run.
+    private int rushLinesCleared = 0;
+
+    // Marks whether the Rush-40 goal has been completed.
+    private boolean rushCompleted = false;
+
+    // Timing for Rush-40: start and finish timestamps in nanoseconds.
+    private long rushStartNanos = 0L;
+    private long rushEndNanos = 0L;
 
     /**
      * Create a new game controller and use the default board size
@@ -38,6 +58,18 @@ public class GameController implements InputEventListener {
         this.gameMode = gameMode;
         this.config = gameMode.getConfig();
         this.board = new SimpleBoard(BOARD_ROWS, BOARD_COLUMNS);
+
+        boolean isRush = (gameMode == GameMode.RUSH_40);
+        int target = isRush ? config.getTargetLinesToWin() : 0;
+
+        if (isRush && target > 0) {
+            this.rushModeActive = true;
+            this.rushTargetLines = target;
+        } else {
+            this.rushModeActive = false;
+            this.rushTargetLines = 0;
+        }
+
         initialiseGame();
     }
 
@@ -61,6 +93,14 @@ public class GameController implements InputEventListener {
         guiController.bindScore(score.scoreProperty());
         guiController.bindLevel(score.levelProperty());
         guiController.bindCombo(score.comboProperty());
+
+        if (rushModeActive) {
+            // Start timing for Rush-40 as soon as the game begins.
+            rushStartNanos = System.nanoTime();
+            rushEndNanos = 0L;
+            rushLinesCleared = 0;
+            rushCompleted = false;
+        }
     }
 
     @Override
@@ -69,7 +109,7 @@ public class GameController implements InputEventListener {
         ClearRow clearRow = null;
 
         if (!moved) {
-            // Brick has landed: merge, clear rows, maybe game over.
+            // Brick has landed: merge, clear rows, maybe Survival / Rush-40 effects.
             clearRow = handleBrickLanded();
         } else if (event.getEventSource() == EventSource.USER) {
             // User soft drop gives a small score bonus.
@@ -156,6 +196,7 @@ public class GameController implements InputEventListener {
      * - merges brick into the background
      * - clears full rows and updates score/combo/level
      * - applies Survival-specific logic (garbage and shields)
+     * - applies Rush-40 goal logic if enabled
      * - spawns the next brick or ends the game if there is no space
      */
     private ClearRow handleBrickLanded() {
@@ -178,7 +219,23 @@ public class GameController implements InputEventListener {
         // Apply Survival-specific effects (garbage pressure and shields).
         handleSurvivalEffects(clearRow, score);
 
-        // true means new brick could not be placed → game over.
+        // Apply Rush-40 goal, if enabled.
+        if (rushModeActive && !rushCompleted && clearRow != null && clearRow.getLinesRemoved() > 0) {
+            rushLinesCleared += clearRow.getLinesRemoved();
+            if (rushLinesCleared >= rushTargetLines) {
+                // Goal reached: stop the run and record completion time.
+                rushCompleted = true;
+                rushEndNanos = System.nanoTime();
+
+                // For now we reuse the standard game-over overlay.
+                // Phase 7 can provide a dedicated "You Win" message.
+                guiController.gameOver();
+                guiController.refreshGameBackground(board.getBoardMatrix());
+                return clearRow;
+            }
+        }
+
+        // Standard behaviour: spawn a new brick and check for normal game over.
         if (board.createNewBrick()) {
             guiController.gameOver();
         }
@@ -211,6 +268,12 @@ public class GameController implements InputEventListener {
         survivalNoClearLandingCount = 0;
         survivalShields = 0;
 
+        // Reset Rush-40 state. Only meaningful if rushModeActive is true.
+        rushLinesCleared = 0;
+        rushCompleted = false;
+        rushEndNanos = 0L;
+        rushStartNanos = rushModeActive ? System.nanoTime() : 0L;
+
         // Reset the board state for completeness.
         // Restart from menu now reloads the whole scene via GuiController,
         // but this is kept for the 'N' shortcut inside the game.
@@ -218,5 +281,18 @@ public class GameController implements InputEventListener {
 
         // Update background in case someone calls this in the future.
         guiController.refreshGameBackground(board.getBoardMatrix());
+    }
+
+    /**
+     * Returns the Rush-40 completion time in seconds, or a negative value
+     * if the current run has not finished or is not a Rush-40 game.
+     * This is intended for future HUD / result screen use.
+     */
+    public double getRushCompletionTimeSeconds() {
+        if (!rushModeActive || !rushCompleted || rushStartNanos == 0L || rushEndNanos == 0L) {
+            return -1.0;
+        }
+        long durationNanos = rushEndNanos - rushStartNanos;
+        return durationNanos / 1_000_000_000.0;
     }
 }
