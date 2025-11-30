@@ -5,25 +5,20 @@ import com.comp2042.logic.bricks.BrickGenerator;
 import com.comp2042.logic.bricks.RandomBrickGenerator;
 
 import java.awt.Point;
+import java.util.Arrays;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Core game model that holds board state, active brick, and score.
- * Handles movement, rotation, collision, and clearing rows.
+ * Handles movement, rotation, collision, clearing rows and garbage rows.
  */
 public class SimpleBoard implements Board {
 
-    // === Board configuration ===
-
-    // OLD (fixed size, parameters ignored):
-    // private static final int ROWS = 25;
-    // private static final int COLUMNS = 10;
-
-    // NEW: store board size as fields so the constructor parameters matter.
-    // This makes the class more reusable and matches the "width/height" rubric bullet.
+    // Board configuration: logical grid size.
     private final int rows;
     private final int columns;
 
-    // Default brick spawn position (x,y)
+    // Default brick spawn position (x, y) in grid coordinates.
     private static final int SPAWN_X = 4;
     private static final int SPAWN_Y = 1;
 
@@ -31,22 +26,14 @@ public class SimpleBoard implements Board {
     private final BrickGenerator brickGenerator;
     private final BrickRotator brickRotator;
     private final Score score;
+
     private int[][] boardMatrix;
     private Point currentOffset;
 
-    // OLD constructor (ignored width/height and used constants):
-    //
-    // public SimpleBoard(int width, int height) {
-    //     // ignore parameters for now; keep constants for clarity
-    //     this.boardMatrix = new int[ROWS][COLUMNS];
-    //     this.brickGenerator = new RandomBrickGenerator();
-    //     this.brickRotator = new BrickRotator();
-    //     this.score = new Score();
-    // }
-
     /**
-     * NEW constructor: use the given dimensions for the internal matrix.
-     * This removes the confusion around width/height and makes the board configurable.
+     * Construct a board with the given logical size.
+     * @param rows    number of rows (including hidden rows at the top)
+     * @param columns number of columns
      */
     public SimpleBoard(int rows, int columns) {
         this.rows = rows;
@@ -57,7 +44,10 @@ public class SimpleBoard implements Board {
         this.score = new Score();
     }
 
-    /** Move the current brick down by one cell. */
+    /**
+     * Move the current brick down by one cell.
+     * @return true if move succeeded, false if blocked
+     */
     @Override
     public boolean moveBrickDown() {
         return tryMove(0, 1);
@@ -96,7 +86,10 @@ public class SimpleBoard implements Board {
         return true;
     }
 
-    /** Rotate current brick left if possible, with a simple wall-kick near borders. */
+    /**
+     * Rotate the current brick to its next orientation.
+     * Uses a simple wall-kick so rotations near the border are less frustrating.
+     */
     @Override
     public boolean rotateLeftBrick() {
         int[][] snapshot = MatrixOperations.copy(boardMatrix);
@@ -105,7 +98,7 @@ public class SimpleBoard implements Board {
         int currentX = (int) currentOffset.getX();
         int currentY = (int) currentOffset.getY();
 
-        // 1) Try rotating in place first
+        // 1) Try rotating in place first.
         boolean conflictInPlace = MatrixOperations.intersect(
                 snapshot,
                 nextShape.getShape(),
@@ -117,7 +110,7 @@ public class SimpleBoard implements Board {
             return true;
         }
 
-        // 2) Simple wall-kick: try shifting one column left or right
+        // 2) Simple horizontal wall kick: try shifting one cell left or right.
         int[] kicks = {-1, 1};
         for (int dx : kicks) {
             int kickedX = currentX + dx;
@@ -127,28 +120,28 @@ public class SimpleBoard implements Board {
                     kickedX,
                     currentY
             );
-
             if (!conflictWithKick) {
-                // Move the brick one step away from the wall and apply the rotation
-                currentOffset = new Point(kickedX, currentY);
                 brickRotator.setCurrentShape(nextShape.getPosition());
+                currentOffset.translate(dx, 0);
                 return true;
             }
         }
 
-        // 3) No valid rotation position found → keep the brick as it is
+        // 3) No valid rotation position found → keep the brick as it is.
         return false;
     }
 
     /**
-     * Creates a new falling brick.
-     * @return true if the new brick immediately collides (→ game over)
+     * Create a new brick at the spawn position.
+     * @return true if the new brick immediately collides with existing blocks
      */
     @Override
     public boolean createNewBrick() {
         Brick newBrick = brickGenerator.getBrick();
         brickRotator.setBrick(newBrick);
         currentOffset = new Point(SPAWN_X, SPAWN_Y);
+
+        // If we already intersect something, the game is over.
         return MatrixOperations.intersect(
                 boardMatrix,
                 brickRotator.getCurrentShape(),
@@ -193,6 +186,37 @@ public class SimpleBoard implements Board {
         return result;
     }
 
+    /**
+     * Pushes existing rows up by one and inserts a garbage row at the bottom.
+     * The garbage row uses a single random colour with exactly one hole,
+     * similar to typical survival-style Tetris garbage.
+     */
+    @Override
+    public void addGarbageRow() {
+        // Shift all rows up: row 1 becomes row 0, row 2 becomes row 1, etc.
+        for (int row = 0; row < rows - 1; row++) {
+            boardMatrix[row] = Arrays.copyOf(boardMatrix[row + 1], columns);
+        }
+
+        // Build a new bottom row: one hole and a solid colour everywhere else.
+        int[] garbageRow = new int[columns];
+        Arrays.fill(garbageRow, 0);
+
+        // Pick the hole column.
+        int holeIndex = ThreadLocalRandom.current().nextInt(columns);
+
+        // Pick a colour id for the entire garbage row (1..7 to match normal bricks).
+        int colourId = ThreadLocalRandom.current().nextInt(1, 8);
+
+        for (int x = 0; x < columns; x++) {
+            if (x != holeIndex) {
+                garbageRow[x] = colourId;
+            }
+        }
+
+        boardMatrix[rows - 1] = garbageRow;
+    }
+
     @Override
     public Score getScore() {
         return score;
@@ -201,10 +225,6 @@ public class SimpleBoard implements Board {
     /** Reset board, score, and spawn a new brick. */
     @Override
     public void newGame() {
-        // OLD:
-        // boardMatrix = new int[ROWS][COLUMNS];
-
-        // NEW: use the stored rows/columns so the board respects constructor size.
         boardMatrix = new int[rows][columns];
         score.reset();
         createNewBrick();

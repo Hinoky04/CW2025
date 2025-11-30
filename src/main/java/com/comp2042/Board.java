@@ -20,6 +20,12 @@ public interface Board {
 
     ClearRow clearRows();
 
+    /**
+     * Adds a garbage row at the bottom of the board and pushes existing rows up.
+     * Implementations decide the exact garbage pattern and colour.
+     */
+    void addGarbageRow();
+
     Score getScore();
 
     void newGame();
