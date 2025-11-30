@@ -30,13 +30,13 @@ import java.util.ResourceBundle;
  */
 public class GuiController implements Initializable {
 
-    // Size of each cell (brick) in the grid, in pixels
+    // Size of each cell (brick) in the grid, in pixels.
     private static final int BRICK_SIZE = 20;
 
-    // Number of hidden rows at the top of the board (spawn area)
+    // Number of hidden rows at the top of the board (spawn area).
     private static final int HIDDEN_TOP_ROWS = 2;
 
-    // Y offset for the brickPanel so it lines up visually with the grid
+    // Y offset for the brickPanel so it lines up visually with the grid.
     private static final int BRICK_PANEL_Y_OFFSET = -42;
 
     // === Configurable values (defaults tuned roughly for Classic mode) ===
@@ -50,6 +50,8 @@ public class GuiController implements Initializable {
     // How many top visible rows are considered "danger zone".
     private int dangerVisibleRows = 3;
 
+    // How much to dim landed blocks in the background (1.0 = normal brightness).
+    private double backgroundDimFactor = 1.0;
 
     @FXML
     private GridPane gamePanel;          // main board grid
@@ -177,12 +179,12 @@ public class GuiController implements Initializable {
             gameOverPanel.setOnMainMenu(this::backToMainMenu);
         }
 
-        // ===== Pause overlay buttons (with debug prints) =====
+        // Pause overlay buttons.
         if (resumeButton != null) {
             System.out.println("DEBUG: resumeButton injected");
             resumeButton.setOnAction(e -> {
                 System.out.println("DEBUG: Resume clicked");
-                togglePause();          // resume / pause
+                togglePause();
             });
         } else {
             System.out.println("DEBUG: resumeButton is NULL");
@@ -192,7 +194,7 @@ public class GuiController implements Initializable {
             System.out.println("DEBUG: restartButton injected");
             restartButton.setOnAction(e -> {
                 System.out.println("DEBUG: Restart clicked");
-                restartSameMode();      // restart current mode
+                restartSameMode();
             });
         } else {
             System.out.println("DEBUG: restartButton is NULL");
@@ -202,14 +204,13 @@ public class GuiController implements Initializable {
             System.out.println("DEBUG: pauseMenuButton injected");
             pauseMenuButton.setOnAction(e -> {
                 System.out.println("DEBUG: Pause Main Menu clicked");
-                backToMainMenu();       // back to main menu
+                backToMainMenu();
             });
         } else {
             System.out.println("DEBUG: pauseMenuButton is NULL");
         }
 
-        // VERY IMPORTANT: make sure pause overlay can receive mouse events.
-        // If mouseTransparent is true, all clicks will pass through and buttons won't fire.
+        // Make sure pause overlay can receive mouse events.
         if (pauseOverlay != null) {
             pauseOverlay.setMouseTransparent(false);
         }
@@ -220,7 +221,6 @@ public class GuiController implements Initializable {
         // Danger HUD starts hidden.
         setDanger(false);
     }
-
 
     /**
      * Centralised key handler.
@@ -375,6 +375,7 @@ public class GuiController implements Initializable {
 
     /**
      * Converts an integer code into a Color/Paint for rendering.
+     * Used for active pieces and as the base colour for background cells.
      */
     private Paint getFillColor(int value) {
         switch (value) {
@@ -400,6 +401,55 @@ public class GuiController implements Initializable {
     }
 
     /**
+     * Applies dimming to a base colour using the given factor.
+     * Only used for landed blocks in Hyper mode.
+     */
+    private Paint applyDimFactor(Paint base, double factor) {
+        if (!(base instanceof Color)) {
+            return base;
+        }
+        Color c = (Color) base;
+        double r = c.getRed() * factor;
+        double g = c.getGreen() * factor;
+        double b = c.getBlue() * factor;
+        return new Color(
+                clamp01(r),
+                clamp01(g),
+                clamp01(b),
+                c.getOpacity()
+        );
+    }
+
+    private double clamp01(double value) {
+        if (value < 0.0) {
+            return 0.0;
+        }
+        if (value > 1.0) {
+            return 1.0;
+        }
+        return value;
+    }
+
+    /**
+     * Chooses the fill color for landed background blocks.
+     * In Hyper mode, landed blocks are drawn dimmer to make stacking harder to read.
+     */
+    private Paint getBackgroundFillColor(int value) {
+        Paint base = getFillColor(value);
+
+        // Keep empty cells transparent.
+        if (value == 0) {
+            return base;
+        }
+
+        // Only dim in Hyper mode and only if a dim factor has been configured.
+        if (currentMode == GameMode.HYPER && backgroundDimFactor < 1.0) {
+            return applyDimFactor(base, backgroundDimFactor);
+        }
+        return base;
+    }
+
+    /**
      * Refreshes the visual representation of the current brick.
      */
     private void refreshBrick(ViewData brick) {
@@ -422,7 +472,7 @@ public class GuiController implements Initializable {
     public void refreshGameBackground(int[][] board) {
         for (int row = HIDDEN_TOP_ROWS; row < board.length; row++) {
             for (int col = 0; col < board[row].length; col++) {
-                setRectangleData(board[row][col], displayMatrix[row][col]);
+                setBackgroundRectangleData(board[row][col], displayMatrix[row][col]);
             }
         }
 
@@ -431,10 +481,20 @@ public class GuiController implements Initializable {
     }
 
     /**
-     * Applies a colour and some rounded corners to a rectangle.
+     * Applies colour and rounded corners to a rectangle for the active piece.
      */
     private void setRectangleData(int colorCode, Rectangle rectangle) {
         rectangle.setFill(getFillColor(colorCode));
+        rectangle.setArcHeight(9);
+        rectangle.setArcWidth(9);
+    }
+
+    /**
+     * Applies colour and rounded corners to a rectangle for the background board.
+     * In Hyper mode, landed blocks are drawn dimmer using backgroundDimFactor.
+     */
+    private void setBackgroundRectangleData(int colorCode, Rectangle rectangle) {
+        rectangle.setFill(getBackgroundFillColor(colorCode));
         rectangle.setArcHeight(9);
         rectangle.setArcWidth(9);
     }
@@ -479,6 +539,7 @@ public class GuiController implements Initializable {
         this.fallIntervalMs = config.getBaseFallIntervalMs();
         this.levelSpeedFactor = config.getLevelSpeedFactor();
         this.dangerVisibleRows = config.getDangerVisibleRows();
+        this.backgroundDimFactor = config.getBackgroundDimFactor();
     }
 
     /**
@@ -524,7 +585,6 @@ public class GuiController implements Initializable {
         // Curve is driven by GameConfig; each level multiplies speed by this factor.
         double rate = 1.0 + (newLevel - 1) * levelSpeedFactor;
         timeLine.setRate(rate);
-
     }
 
     /**
@@ -545,14 +605,14 @@ public class GuiController implements Initializable {
 
     /**
      * Old "new game" button behaviour is now equivalent to restartSameMode().
-     * Still保留这个方法，给 FXML 或其它地方复用。
+     * Kept for FXML or other callers that still reference this handler.
      */
     public void newGame(javafx.event.ActionEvent actionEvent) {
         restartSameMode();
     }
 
     /**
-     * Pause button handler in case有其它地方（工具栏）调用。
+     * Pause button handler in case it is used by toolbar or other UI elements.
      */
     public void pauseGame(javafx.event.ActionEvent actionEvent) {
         togglePause();

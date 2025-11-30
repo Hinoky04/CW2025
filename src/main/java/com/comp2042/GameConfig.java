@@ -34,6 +34,12 @@ public final class GameConfig {
      */
     private final int dangerVisibleRows;
 
+    /**
+     * For Hyper: how much to dim landed blocks in the background.
+     * 1.0 = normal brightness; values between 0 and 1 make blocks darker.
+     */
+    private final double backgroundDimFactor;
+
     // --- Mode-specific knobs (used in later phases) ---
 
     /**
@@ -53,6 +59,7 @@ public final class GameConfig {
                        double speedMultiplier,
                        double levelSpeedFactor,
                        int dangerVisibleRows,
+                       double backgroundDimFactor,
                        int maxNoClearBeforeGarbage,
                        int targetLinesToWin) {
 
@@ -60,6 +67,7 @@ public final class GameConfig {
         this.speedMultiplier = speedMultiplier;
         this.levelSpeedFactor = levelSpeedFactor;
         this.dangerVisibleRows = dangerVisibleRows;
+        this.backgroundDimFactor = backgroundDimFactor;
         this.maxNoClearBeforeGarbage = maxNoClearBeforeGarbage;
         this.targetLinesToWin = targetLinesToWin;
     }
@@ -75,28 +83,31 @@ public final class GameConfig {
                         1.0,   // speedMultiplier
                         0.15,  // levelSpeedFactor
                         3,     // dangerVisibleRows
+                        1.0,   // backgroundDimFactor (no dimming)
                         0,     // maxNoClearBeforeGarbage (off)
                         0      // targetLinesToWin (no target)
                 );
             case SURVIVAL:
-                // Same basic speed as classic, will later add garbage
-                // pressure using maxNoClearBeforeGarbage.
+                // Same basic speed as classic, with garbage pressure using
+                // maxNoClearBeforeGarbage. Background brightness stays normal.
                 return new GameConfig(
                         400,
                         1.0,
                         0.15,
                         3,
+                        1.0,   // backgroundDimFactor (no dimming)
                         4,     // after 4 non-clearing landings -> garbage
                         0
                 );
             case HYPER:
-                // Faster, more aggressive; later we will also make
-                // background bricks semi-invisible.
+                // Faster, more aggressive; background will be drawn dimmer
+                // using backgroundDimFactor to make stacking harder to read.
                 return new GameConfig(
                         350,   // slightly faster base speed
                         1.4,   // speedMultiplier
                         0.20,  // sharper speed curve
                         3,
+                        0.35,  // backgroundDimFactor (landed blocks are dimmed)
                         0,
                         0
                 );
@@ -107,8 +118,9 @@ public final class GameConfig {
                         1.0,
                         0.15,
                         3,
+                        1.0,   // backgroundDimFactor (no dimming)
                         0,
-                        40    // clear 40 lines to win
+                        40     // clear 40 lines to win
                 );
             default:
                 throw new IllegalArgumentException("Unknown mode: " + mode);
@@ -134,6 +146,10 @@ public final class GameConfig {
 
     public int getDangerVisibleRows() {
         return dangerVisibleRows;
+    }
+
+    public double getBackgroundDimFactor() {
+        return backgroundDimFactor;
     }
 
     public int getMaxNoClearBeforeGarbage() {
