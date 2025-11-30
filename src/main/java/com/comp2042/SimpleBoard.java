@@ -30,6 +30,11 @@ public class SimpleBoard implements Board {
     private int[][] boardMatrix;
     private Point currentOffset;
 
+    // Active and held bricks
+    private Brick currentBrick;
+    private Brick heldBrick;
+    private boolean hasHeldThisTurn;
+
     /**
      * Construct a board with the given logical size.
      * @param rows    number of rows (including hidden rows at the top)
@@ -42,6 +47,9 @@ public class SimpleBoard implements Board {
         this.brickGenerator = new RandomBrickGenerator();
         this.brickRotator = new BrickRotator();
         this.score = new Score();
+        this.currentBrick = null;
+        this.heldBrick = null;
+        this.hasHeldThisTurn = false;
     }
 
     /**
@@ -137,8 +145,16 @@ public class SimpleBoard implements Board {
      */
     @Override
     public boolean createNewBrick() {
-        Brick newBrick = brickGenerator.getBrick();
-        brickRotator.setBrick(newBrick);
+        return spawnNewBrickFromGenerator();
+    }
+
+    /**
+     * Spawn the next brick from the generator and position it at the spawn point.
+     * @return true if the new brick immediately collides with existing blocks
+     */
+    private boolean spawnNewBrickFromGenerator() {
+        currentBrick = brickGenerator.getBrick();
+        brickRotator.setBrick(currentBrick);
         currentOffset = new Point(SPAWN_X, SPAWN_Y);
 
         // If we already intersect something, the game is over.
@@ -150,6 +166,48 @@ public class SimpleBoard implements Board {
         );
     }
 
+    /**
+     * Hold or swap the current brick.
+     * If no brick is held, move current brick into hold and spawn the next brick.
+     * If a brick is already held, swap it with the current one.
+     * This can only be used once per brick life-cycle.
+     *
+     * @return true if the new active brick immediately collides with existing blocks
+     */
+    @Override
+    public boolean holdCurrentBrick() {
+        // No active brick or already used hold for this piece.
+        if (currentBrick == null || hasHeldThisTurn) {
+            return false;
+        }
+
+        boolean collision;
+
+        if (heldBrick == null) {
+            // First time holding: store current brick and spawn a new one.
+            heldBrick = currentBrick;
+            collision = spawnNewBrickFromGenerator();
+        } else {
+            // Swap current and held bricks, then respawn at the top.
+            Brick temp = currentBrick;
+            currentBrick = heldBrick;
+            heldBrick = temp;
+
+            brickRotator.setBrick(currentBrick);
+            currentOffset = new Point(SPAWN_X, SPAWN_Y);
+
+            collision = MatrixOperations.intersect(
+                    boardMatrix,
+                    brickRotator.getCurrentShape(),
+                    (int) currentOffset.getX(),
+                    (int) currentOffset.getY()
+            );
+        }
+
+        hasHeldThisTurn = true;
+        return collision;
+    }
+
     @Override
     public int[][] getBoardMatrix() {
         return boardMatrix;
@@ -157,11 +215,17 @@ public class SimpleBoard implements Board {
 
     @Override
     public ViewData getViewData() {
+        int[][] nextData = brickGenerator.getNextBrick().getShapeMatrix().get(0);
+        int[][] holdData = null;
+        if (heldBrick != null) {
+            holdData = heldBrick.getShapeMatrix().get(0);
+        }
         return new ViewData(
                 brickRotator.getCurrentShape(),
                 (int) currentOffset.getX(),
                 (int) currentOffset.getY(),
-                brickGenerator.getNextBrick().getShapeMatrix().get(0)
+                nextData,
+                holdData
         );
     }
 
@@ -174,6 +238,8 @@ public class SimpleBoard implements Board {
                 (int) currentOffset.getX(),
                 (int) currentOffset.getY()
         );
+        // A new brick will spawn after this, so allow hold again.
+        hasHeldThisTurn = false;
     }
 
     /** Check and clear full rows, update matrix safely. */
@@ -227,6 +293,9 @@ public class SimpleBoard implements Board {
     public void newGame() {
         boardMatrix = new int[rows][columns];
         score.reset();
+        currentBrick = null;
+        heldBrick = null;
+        hasHeldThisTurn = false;
         createNewBrick();
     }
 }

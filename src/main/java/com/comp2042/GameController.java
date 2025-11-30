@@ -120,6 +120,60 @@ public class GameController implements InputEventListener {
         return new DownData(clearRow, board.getViewData());
     }
 
+    @Override
+    public ViewData onLeftEvent(MoveEvent event) {
+        board.moveBrickLeft();
+        return board.getViewData();
+    }
+
+    @Override
+    public ViewData onRightEvent(MoveEvent event) {
+        board.moveBrickRight();
+        return board.getViewData();
+    }
+
+    @Override
+    public ViewData onRotateEvent(MoveEvent event) {
+        board.rotateLeftBrick();
+        return board.getViewData();
+    }
+
+    /**
+     * Triggered when the player requests a hold action.
+     * Delegates to the board and applies normal game-over handling
+     * if the new active brick immediately collides.
+     */
+    @Override
+    public ViewData onHoldEvent(MoveEvent event) {
+        boolean collision = board.holdCurrentBrick();
+        if (collision) {
+            guiController.gameOver();
+            guiController.refreshGameBackground(board.getBoardMatrix());
+        }
+        return board.getViewData();
+    }
+
+    @Override
+    public void createNewGame() {
+        // Reset survival-specific state.
+        survivalNoClearLandingCount = 0;
+        survivalShields = 0;
+
+        // Reset Rush-40 state. Only meaningful if rushModeActive is true.
+        rushLinesCleared = 0;
+        rushCompleted = false;
+        rushEndNanos = 0L;
+        rushStartNanos = rushModeActive ? System.nanoTime() : 0L;
+
+        // Reset the board state for completeness.
+        // Restart from menu now reloads the whole scene via GuiController,
+        // but this is kept for the 'N' shortcut inside the game.
+        board.newGame();
+
+        // Update background in case someone calls this in the future.
+        guiController.refreshGameBackground(board.getBoardMatrix());
+    }
+
     /**
      * Survival-mode behaviour: dynamic garbage pressure and shields.
      * - Garbage rows appear after several non-clearing landings.
@@ -242,45 +296,6 @@ public class GameController implements InputEventListener {
 
         guiController.refreshGameBackground(board.getBoardMatrix());
         return clearRow;
-    }
-
-    @Override
-    public ViewData onLeftEvent(MoveEvent event) {
-        board.moveBrickLeft();
-        return board.getViewData();
-    }
-
-    @Override
-    public ViewData onRightEvent(MoveEvent event) {
-        board.moveBrickRight();
-        return board.getViewData();
-    }
-
-    @Override
-    public ViewData onRotateEvent(MoveEvent event) {
-        board.rotateLeftBrick();
-        return board.getViewData();
-    }
-
-    @Override
-    public void createNewGame() {
-        // Reset survival-specific state.
-        survivalNoClearLandingCount = 0;
-        survivalShields = 0;
-
-        // Reset Rush-40 state. Only meaningful if rushModeActive is true.
-        rushLinesCleared = 0;
-        rushCompleted = false;
-        rushEndNanos = 0L;
-        rushStartNanos = rushModeActive ? System.nanoTime() : 0L;
-
-        // Reset the board state for completeness.
-        // Restart from menu now reloads the whole scene via GuiController,
-        // but this is kept for the 'N' shortcut inside the game.
-        board.newGame();
-
-        // Update background in case someone calls this in the future.
-        guiController.refreshGameBackground(board.getBoardMatrix());
     }
 
     /**

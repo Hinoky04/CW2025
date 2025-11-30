@@ -34,7 +34,7 @@ public class GuiController implements Initializable {
     // Increased for Phase 7.2 so the board feels larger on fullscreen displays.
     private static final int BRICK_SIZE = 26;
 
-    // Preview brick size for the NEXT panel (slightly smaller than main board).
+    // Preview brick size for the NEXT / HOLD panels (slightly smaller than main board).
     private static final int NEXT_BRICK_SIZE = 20;
 
     // Number of hidden rows at the top of the board (spawn area).
@@ -68,6 +68,9 @@ public class GuiController implements Initializable {
 
     @FXML
     private GridPane nextBrickPanel;     // grid used to display NEXT preview
+
+    @FXML
+    private GridPane holdBrickPanel;     // grid used to display HOLD preview
 
     @FXML
     private GameOverPanel gameOverPanel; // overlay shown when the game ends
@@ -108,6 +111,9 @@ public class GuiController implements Initializable {
 
     // NEXT preview cells.
     private Rectangle[][] nextBrickRectangles;
+
+    // HOLD preview cells.
+    private Rectangle[][] holdBrickRectangles;
 
     // Listener that sends user input events to the game logic.
     private InputEventListener eventListener;
@@ -234,7 +240,7 @@ public class GuiController implements Initializable {
 
     /**
      * Centralised key handler.
-     * Handles pause (P / ESC), restart (N), and forwards movement only while playing.
+     * Handles pause (P / ESC), restart (N), and forwards movement/hold only while playing.
      */
     private void handleKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
@@ -259,7 +265,7 @@ public class GuiController implements Initializable {
             return;
         }
 
-        // Movement and rotation only allowed while playing.
+        // Movement, rotation and hold only allowed while playing.
         if (!canHandleInput()) {
             return;
         }
@@ -279,6 +285,14 @@ public class GuiController implements Initializable {
         if (code == KeyCode.UP || code == KeyCode.W) {
             refreshBrick(eventListener.onRotateEvent(
                     new MoveEvent(EventType.ROTATE, EventSource.USER)));
+            event.consume();
+        }
+
+        // HOLD: use C to hold/swap the current piece.
+        if (code == KeyCode.C) {
+            // EventType is not used by onHoldEvent, so we reuse DOWN as a placeholder.
+            refreshBrick(eventListener.onHoldEvent(
+                    new MoveEvent(EventType.DOWN, EventSource.USER)));
             event.consume();
         }
 
@@ -318,6 +332,7 @@ public class GuiController implements Initializable {
         initBackgroundCells(boardMatrix);
         initFallingBrick(brick);
         initNextBrick(brick);
+        initHoldBrick(brick);
         startAutoDropTimer();
     }
 
@@ -381,6 +396,35 @@ public class GuiController implements Initializable {
     }
 
     /**
+     * Creates rectangles for the HOLD preview panel.
+     * If no brick is held yet, the panel remains empty.
+     */
+    private void initHoldBrick(ViewData brick) {
+        if (holdBrickPanel == null) {
+            return;
+        }
+        int[][] holdData = brick.getHoldBrickData();
+
+        holdBrickPanel.getChildren().clear();
+
+        if (holdData == null || holdData.length == 0 || holdData[0].length == 0) {
+            holdBrickRectangles = null;
+            return;
+        }
+
+        holdBrickRectangles = new Rectangle[holdData.length][holdData[0].length];
+
+        for (int row = 0; row < holdData.length; row++) {
+            for (int col = 0; col < holdData[row].length; col++) {
+                Rectangle cell = new Rectangle(NEXT_BRICK_SIZE, NEXT_BRICK_SIZE);
+                cell.setFill(getFillColor(holdData[row][col]));
+                holdBrickRectangles[row][col] = cell;
+                holdBrickPanel.add(cell, col, row);
+            }
+        }
+    }
+
+    /**
      * Updates the NEXT preview colours based on the latest view data.
      */
     private void refreshNextBrick(ViewData brick) {
@@ -405,6 +449,39 @@ public class GuiController implements Initializable {
                 Rectangle rect = nextBrickRectangles[row][col];
                 if (rect != null) {
                     rect.setFill(getFillColor(nextData[row][col]));
+                }
+            }
+        }
+    }
+
+    /**
+     * Updates the HOLD preview colours based on the latest view data.
+     * Clears the panel if there is no held brick.
+     */
+    private void refreshHoldBrick(ViewData brick) {
+        if (holdBrickPanel == null) {
+            return;
+        }
+        int[][] holdData = brick.getHoldBrickData();
+
+        if (holdData == null || holdData.length == 0 || holdData[0].length == 0) {
+            holdBrickPanel.getChildren().clear();
+            holdBrickRectangles = null;
+            return;
+        }
+
+        if (holdBrickRectangles == null
+                || holdBrickRectangles.length != holdData.length
+                || holdBrickRectangles[0].length != holdData[0].length) {
+            initHoldBrick(brick);
+            return;
+        }
+
+        for (int row = 0; row < holdData.length; row++) {
+            for (int col = 0; col < holdData[row].length; col++) {
+                Rectangle rect = holdBrickRectangles[row][col];
+                if (rect != null) {
+                    rect.setFill(getFillColor(holdData[row][col]));
                 }
             }
         }
@@ -468,7 +545,7 @@ public class GuiController implements Initializable {
 
     /**
      * Applies dimming to a base colour using the given factor.
-     * Only used for landed blocks in Hyper mode.
+     * Only used for landed blocks in the background in Hyper mode.
      */
     private Paint applyDimFactor(Paint base, double factor) {
         if (!(base instanceof Color)) {
@@ -529,8 +606,9 @@ public class GuiController implements Initializable {
                 }
             }
 
-            // NEXT preview uses the same view data; update alongside the main brick.
+            // NEXT and HOLD previews use the same view data.
             refreshNextBrick(brick);
+            refreshHoldBrick(brick);
         }
     }
 
@@ -585,7 +663,7 @@ public class GuiController implements Initializable {
                 notificationPanel.showScore(groupNotification.getChildren());
             }
 
-            // Update the brick's position/shape and NEXT preview.
+            // Update the brick's position/shape and NEXT/HOLD previews.
             refreshBrick(downData.getViewData());
         }
 

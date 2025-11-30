@@ -10,5 +10,11 @@ public interface InputEventListener {
 
     ViewData onRotateEvent(MoveEvent event);
 
+    /**
+     * Triggered when the player requests a hold action.
+     * Implementations can use this to hold or swap the active brick.
+     */
+    ViewData onHoldEvent(MoveEvent event);
+
     void createNewGame();
 }

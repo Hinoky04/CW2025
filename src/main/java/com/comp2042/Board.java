@@ -10,6 +10,18 @@ public interface Board {
 
     boolean rotateLeftBrick();
 
+    /**
+     * Hold or swap the current active brick.
+     *
+     * @return true if the newly active brick immediately collides with existing blocks (game over), false otherwise
+     */
+    boolean holdCurrentBrick();
+
+    /**
+     * Create a new brick at the spawn position.
+     *
+     * @return true if the new brick immediately collides with existing blocks
+     */
     boolean createNewBrick();
 
     int[][] getBoardMatrix();

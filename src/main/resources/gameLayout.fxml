@@ -20,19 +20,21 @@
         <VBox alignment="CENTER" spacing="30.0">
             <children>
 
-                <!-- TOP HUD row: placeholder for HOLD (left, future) and NEXT (right). -->
+                <!-- TOP HUD row: HOLD (left) and NEXT (right). -->
                 <HBox alignment="CENTER" spacing="80.0">
-                    <!-- Left placeholder panel for future HOLD (no fx:id yet). -->
+                    <!-- HOLD panel: label + GridPane reserved for hold preview. -->
                     <VBox spacing="10.0" alignment="TOP_CENTER">
                         <padding>
                             <Insets top="10.0" left="0.0" right="0.0" bottom="0.0"/>
                         </padding>
                         <children>
-                            <Label text="HOLD"
+                            <Label text="HOLD (C)"
                                    styleClass="nextBrickLabel"/>
-                            <Pane prefWidth="88.0"
-                                  prefHeight="88.0"
-                                  styleClass="nextBrick"/>
+                            <GridPane fx:id="holdBrickPanel"
+                                      hgap="1" vgap="1"
+                                      prefWidth="88.0"
+                                      prefHeight="88.0"
+                                      styleClass="nextBrick"/>
                         </children>
                     </VBox>
 
@@ -105,8 +107,7 @@
                     </children>
                 </Group>
 
-                <!-- BOTTOM HUD row: score / level / combo / danger in a compact card.
-                     Later we can split this into left/right panels (e.g. timer vs score). -->
+                <!-- BOTTOM HUD row: score / level / combo / danger in a compact card. -->
                 <HBox alignment="CENTER" spacing="80.0">
                     <VBox spacing="5.0" alignment="TOP_LEFT" styleClass="hud-box">
                         <padding>
@@ -120,6 +121,10 @@
                                   text="DANGER!"
                                   visible="false"
                                   styleClass="dangerText hud-value hud-danger"/>
+
+                            <!-- Simple control hint so players know how to use hold. -->
+                            <Text text="Controls: ← → move, ↑ rotate, ↓ soft drop, C hold/swap"
+                                  styleClass="hud-value"/>
                         </children>
                     </VBox>
                 </HBox>
