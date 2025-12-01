@@ -117,3 +117,88 @@
 .hud-danger {
     -fx-font-size: 20px;
 }
+
+/* === Global background === */
+
+.root {
+    /* Dark base colour in case image fails */
+    -fx-background-color: #05060a;
+    -fx-background-image: url("background_image.png");
+    -fx-background-size: cover;
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: center;
+}
+
+/* === Game board frame === */
+
+.gameBoard {
+    -fx-background-color: linear-gradient(to bottom, #16181f, #05070b);
+    -fx-background-radius: 26;
+    -fx-border-radius: 30;
+    -fx-border-width: 4;
+    -fx-border-color: linear-gradient(to bottom, #d0d0d0, #4b4b4b);
+    -fx-padding: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 20, 0.3, 0, 4);
+}
+
+/* Extra red glow when near the top */
+.dangerBoard {
+    -fx-border-color: linear-gradient(to bottom, #ff8080, #ff0000);
+    -fx-effect: dropshadow(gaussian, rgba(255,0,0,0.7), 30, 0.6, 0, 0);
+}
+
+/* === HUD cards === */
+
+.hud-box {
+    -fx-background-color: rgba(0, 0, 0, 0.65);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(255, 255, 255, 0.18);
+    -fx-border-width: 1;
+}
+
+.hud-value {
+    -fx-fill: #f5f5f5;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+/* Next / Hold panels */
+.nextBrick {
+    -fx-background-color: rgba(0, 0, 0, 0.6);
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: rgba(255, 255, 255, 0.2);
+    -fx-border-width: 1;
+}
+
+.nextBrickLabel {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+/* Game over title text */
+.gameOverStyle {
+    -fx-text-fill: white;
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+}
+
+/* Dark iPad-style buttons */
+.ipad-dark-grey {
+    -fx-background-color: linear-gradient(#555555, #222222);
+    -fx-text-fill: #f5f5f5;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+}
+
+/* Danger text in HUD */
+.dangerText {
+    -fx-fill: #ff5555;
+}
+
+.hud-danger {
+    -fx-effect: dropshadow(gaussian, rgba(255,0,0,0.8), 20, 0.4, 0, 0);
+}
