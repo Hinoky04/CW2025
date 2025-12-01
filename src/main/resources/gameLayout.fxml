@@ -56,9 +56,6 @@
                 <Group>
                     <children>
 
-                        <!-- Grid used to display the current falling brick. -->
-                        <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
-
                         <!-- Outer frame for the main board (border, glow, etc.). -->
                         <BorderPane styleClass="gameBoard" fx:id="gameBoard">
                             <center>
@@ -68,6 +65,9 @@
                                           layoutY="30.0" layoutX="40.0"/>
                             </center>
                         </BorderPane>
+
+                        <!-- Grid used to display the current falling brick (above the board). -->
+                        <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
 
                         <!-- Used for pop-up messages (score, etc.) and the GameOverPanel. -->
                         <Group fx:id="groupNotification" layoutX="14.0" layoutY="203.0">
