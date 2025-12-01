@@ -117,6 +117,11 @@
                             <!-- Mode label: set dynamically from GameMode. -->
                             <Text fx:id="modeText" text="Mode: Classic" styleClass="hud-value"/>
 
+                            <!-- New: per-mode hint line (set by GuiController). -->
+                            <Text fx:id="modeHintText"
+                                  text="Classic: standard Tetris rules."
+                                  styleClass="hud-value"/>
+
                             <Text fx:id="scoreText" text="Score 0" styleClass="hud-value"/>
                             <Text fx:id="levelText" text="Level 1" styleClass="hud-value"/>
                             <Text fx:id="timerText" text="Time 00:00" styleClass="hud-value"/>

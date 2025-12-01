@@ -84,6 +84,9 @@ public class GuiController implements Initializable {
     private Text modeText;               // shows current mode in the HUD
 
     @FXML
+    private Text modeHintText;           // per-mode hint line in the HUD
+
+    @FXML
     private Text scoreText;              // shows current score in the HUD
 
     @FXML
@@ -186,8 +189,34 @@ public class GuiController implements Initializable {
         if (modeText != null && this.currentMode != null) {
             modeText.setText("Mode: " + this.currentMode.getDisplayName());
         }
+
+        if (modeHintText != null && this.currentMode != null) {
+            modeHintText.setText(buildModeHint(this.currentMode));
+        }
+
         clearProgressText();
         refreshBestInfoForMode(this.currentMode);
+    }
+
+    /**
+     * Builds a short per-mode hint shown under the mode label.
+     */
+    private String buildModeHint(GameMode mode) {
+        if (mode == null) {
+            return "";
+        }
+        switch (mode) {
+            case CLASSIC:
+                return "Classic: standard Tetris rules.";
+            case SURVIVAL:
+                return "Survival: clear 4 lines at once to gain a shield.";
+            case HYPER:
+                return "Hyper: faster with dimmed background.";
+            case RUSH_40:
+                return "Rush 40: clear 40 lines as fast as possible.";
+            default:
+                return "";
+        }
     }
 
     /**
@@ -256,6 +285,8 @@ public class GuiController implements Initializable {
         if (bestText != null) {
             bestText.setText("Best Score 0");
         }
+        // modeHintText initial value is already set from FXML; setGameMode()
+        // will overwrite it once the GameController selects a mode.
     }
 
     /**
@@ -960,7 +991,7 @@ public class GuiController implements Initializable {
         }
     }
 
-        // === Result screen helper (Phase 7.6) ===
+    // === Result screen helper (Phase 7.6) ===
 
     /**
      * Shows the final result panel and updates best records.
@@ -997,5 +1028,4 @@ public class GuiController implements Initializable {
         // Then run the normal game-over flow (stop timers, show overlay).
         gameOver();
     }
-
 }
