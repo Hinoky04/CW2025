@@ -391,12 +391,19 @@ public class GuiController implements Initializable {
         for (int row = HIDDEN_TOP_ROWS; row < boardMatrix.length; row++) {
             for (int col = 0; col < boardMatrix[row].length; col++) {
                 Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
+
+                // Transparent fill so the background image shows through,
+                // but with a subtle grey stroke to make the grid obvious.
                 cell.setFill(Color.TRANSPARENT);
+                cell.setStroke(Color.rgb(55, 55, 55));   // grid line colour
+                cell.setStrokeWidth(0.7);
+
                 displayMatrix[row][col] = cell;
                 gamePanel.add(cell, col, row - HIDDEN_TOP_ROWS);
             }
         }
     }
+
 
     private void initFallingBrick(ViewData brick) {
         int[][] brickData = brick.getBrickData();
@@ -574,19 +581,28 @@ public class GuiController implements Initializable {
         timerText.setText(String.format("Time %02d:%02d", minutes, seconds));
     }
 
+    /**
+     * Moves the brickPanel so that the falling piece lines up exactly with
+     * the background grid inside gamePanel. This uses the same cell size
+     * and gaps as the background rectangles, so there is no wobble.
+     */
     private void updateBrickPanelPosition(ViewData brick) {
-        double x = gamePanel.getLayoutX()
-                + brick.getxPosition() * brickPanel.getVgap()
-                + brick.getxPosition() * BRICK_SIZE;
+        // Size of one cell including the 1px gap from the GridPane.
+        double cellWidth = BRICK_SIZE + gamePanel.getHgap();
+        double cellHeight = BRICK_SIZE + gamePanel.getVgap();
 
-        double y = BRICK_PANEL_Y_OFFSET
-                + gamePanel.getLayoutY()
-                + brick.getyPosition() * brickPanel.getHgap()
-                + brick.getyPosition() * BRICK_SIZE;
+        // xPosition/yPosition are in board coordinates (0..columns/rows-1).
+        double x = gamePanel.getLayoutX() + brick.getxPosition() * cellWidth;
+
+        // Subtract hidden top rows so row 2 of the logical board appears
+        // as row 0 in the visible grid.
+        double y = gamePanel.getLayoutY()
+                + (brick.getyPosition() - HIDDEN_TOP_ROWS) * cellHeight;
 
         brickPanel.setLayoutX(x);
         brickPanel.setLayoutY(y);
     }
+
 
     private Paint getFillColor(int value) {
         switch (value) {
