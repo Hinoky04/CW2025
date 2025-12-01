@@ -49,6 +49,9 @@ public class GameController implements InputEventListener {
     private long rushStartNanos = 0L;
     private long rushEndNanos = 0L;
 
+    // Total lines cleared in this run (all modes).
+    private int totalLinesCleared = 0;
+
     /**
      * Create a new game controller and use the default board size
      * for the selected mode. Behaviour diverges via GameConfig values.
@@ -80,38 +83,30 @@ public class GameController implements InputEventListener {
         board.createNewBrick();
         guiController.setEventListener(this);
 
-        // Tell GUI which mode we are running so restart uses the same mode
-        // and the HUD mode label is updated.
         guiController.setGameMode(gameMode);
-
-        // Apply mode-specific config (speed curve, danger rows, etc.).
         guiController.applyConfig(config);
 
         guiController.initGameView(board.getBoardMatrix(), board.getViewData());
 
-        // Bind score/level/combo from the model to the HUD.
         Score score = board.getScore();
         guiController.bindScore(score.scoreProperty());
         guiController.bindLevel(score.levelProperty());
         guiController.bindCombo(score.comboProperty());
 
+        totalLinesCleared = 0;
+
         if (rushModeActive) {
-            // Start timing for Rush-40 as soon as the game begins.
             rushStartNanos = System.nanoTime();
             rushEndNanos = 0L;
             rushLinesCleared = 0;
             rushCompleted = false;
         }
 
-        // Initialise the progress HUD for this mode (Rush / Survival).
         initialiseProgressHud(score);
     }
 
     /**
      * Initialises the generic progress HUD line depending on the current mode.
-     * - Rush-40: shows "Lines 0 / target".
-     * - Survival: shows "Shields S, Garbage in N".
-     * - Other modes: clears the progress text.
      */
     private void initialiseProgressHud(Score score) {
         if (rushModeActive && rushTargetLines > 0) {
@@ -228,8 +223,11 @@ public class GameController implements InputEventListener {
         Score score = board.getScore();
 
         if (clearRow != null && clearRow.getLinesRemoved() > 0) {
+            int lines = clearRow.getLinesRemoved();
+            totalLinesCleared += lines;
+
             score.registerLinesCleared(
-                    clearRow.getLinesRemoved(),
+                    lines,
                     clearRow.getScoreBonus()
             );
         } else {
@@ -250,9 +248,16 @@ public class GameController implements InputEventListener {
 
                 double completionSeconds = getRushCompletionTimeSeconds();
                 int finalScore = score.scoreProperty().get();
-                guiController.updateBestInfo(gameMode, finalScore, completionSeconds);
 
-                guiController.gameOver();
+                guiController.showFinalResults(
+                        gameMode,
+                        finalScore,
+                        totalLinesCleared,
+                        rushTargetLines,
+                        completionSeconds,
+                        true
+                );
+
                 guiController.refreshGameBackground(board.getBoardMatrix());
                 return clearRow;
             }
@@ -262,9 +267,19 @@ public class GameController implements InputEventListener {
         if (board.createNewBrick()) {
             double completionSeconds = getRushCompletionTimeSeconds();
             int finalScore = score.scoreProperty().get();
-            guiController.updateBestInfo(gameMode, finalScore, completionSeconds);
+            int targetLines = rushModeActive ? rushTargetLines : 0;
 
-            guiController.gameOver();
+            // Top-out is a loss even in Rush-40 if we did not hit targetLines.
+            boolean isWin = rushModeActive && rushCompleted;
+
+            guiController.showFinalResults(
+                    gameMode,
+                    finalScore,
+                    totalLinesCleared,
+                    targetLines,
+                    completionSeconds,
+                    isWin
+            );
         }
 
         guiController.refreshGameBackground(board.getBoardMatrix());
@@ -307,6 +322,8 @@ public class GameController implements InputEventListener {
         rushCompleted = false;
         rushEndNanos = 0L;
         rushStartNanos = rushModeActive ? System.nanoTime() : 0L;
+
+        totalLinesCleared = 0;
 
         board.newGame();
 

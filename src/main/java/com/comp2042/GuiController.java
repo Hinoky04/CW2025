@@ -959,4 +959,43 @@ public class GuiController implements Initializable {
             bestText.setText(text.toString());
         }
     }
+
+        // === Result screen helper (Phase 7.6) ===
+
+    /**
+     * Shows the final result panel and updates best records.
+     *
+     * @param mode              game mode that was played
+     * @param finalScore        score at the end of the run
+     * @param totalLinesCleared total lines cleared during the run
+     * @param targetLines       Rush-40 target (0 for non-target modes)
+     * @param timeSeconds       completion time in seconds (<=0 means "no time")
+     * @param isWin             true if the player achieved the mode's win condition
+     */
+    public void showFinalResults(GameMode mode,
+                                 int finalScore,
+                                 int totalLinesCleared,
+                                 int targetLines,
+                                 double timeSeconds,
+                                 boolean isWin) {
+
+        // Update best score / best Rush-40 time.
+        updateBestInfo(mode, finalScore, timeSeconds);
+
+        // Populate result panel.
+        if (gameOverPanel != null) {
+            gameOverPanel.setResult(
+                    mode,
+                    finalScore,
+                    totalLinesCleared,
+                    targetLines,
+                    timeSeconds,
+                    isWin
+            );
+        }
+
+        // Then run the normal game-over flow (stop timers, show overlay).
+        gameOver();
+    }
+
 }
