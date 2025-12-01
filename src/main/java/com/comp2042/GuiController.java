@@ -285,8 +285,7 @@ public class GuiController implements Initializable {
         if (bestText != null) {
             bestText.setText("Best Score 0");
         }
-        // modeHintText initial value is already set from FXML; setGameMode()
-        // will overwrite it once the GameController selects a mode.
+        // modeHintText is set once GameController selects the mode.
     }
 
     /**
@@ -321,18 +320,21 @@ public class GuiController implements Initializable {
         if (code == KeyCode.LEFT || code == KeyCode.A) {
             refreshBrick(eventListener.onLeftEvent(
                     new MoveEvent(EventType.LEFT, EventSource.USER)));
+            SoundManager.playMove();
             event.consume();
         }
 
         if (code == KeyCode.RIGHT || code == KeyCode.D) {
             refreshBrick(eventListener.onRightEvent(
                     new MoveEvent(EventType.RIGHT, EventSource.USER)));
+            SoundManager.playMove();
             event.consume();
         }
 
         if (code == KeyCode.UP || code == KeyCode.W) {
             refreshBrick(eventListener.onRotateEvent(
                     new MoveEvent(EventType.ROTATE, EventSource.USER)));
+            SoundManager.playRotate();
             event.consume();
         }
 
@@ -340,11 +342,14 @@ public class GuiController implements Initializable {
         if (code == KeyCode.C) {
             refreshBrick(eventListener.onHoldEvent(
                     new MoveEvent(EventType.DOWN, EventSource.USER)));
+            SoundManager.playHold();
             event.consume();
         }
 
         if (code == KeyCode.DOWN || code == KeyCode.S) {
             moveDown(new MoveEvent(EventType.DOWN, EventSource.USER));
+            // soft drop counts as movement; optional:
+            SoundManager.playMove();
             event.consume();
         }
     }
@@ -378,6 +383,7 @@ public class GuiController implements Initializable {
         initHoldBrick(brick);
         startAutoDropTimer();
         startHudTimerIfNeeded();
+        MusicPlayer.startBackgroundMusic();
     }
 
     private void initBackgroundCells(int[][] boardMatrix) {
@@ -692,6 +698,8 @@ public class GuiController implements Initializable {
                 NotificationPanel notificationPanel = new NotificationPanel(bonusText);
                 groupNotification.getChildren().add(notificationPanel);
                 notificationPanel.showScore(groupNotification.getChildren());
+
+                SoundManager.playLineClear();
             }
 
             refreshBrick(downData.getViewData());
@@ -764,6 +772,9 @@ public class GuiController implements Initializable {
         if (brickPanel != null) {
             brickPanel.getChildren().clear();
         }
+
+        SoundManager.playGameOver();
+        MusicPlayer.stopBackgroundMusic();
     }
 
     public void newGame(javafx.event.ActionEvent actionEvent) {
@@ -793,6 +804,8 @@ public class GuiController implements Initializable {
                     hudTimer.pause();
                 }
             }
+
+            MusicPlayer.pauseBackgroundMusic();
         } else if (gameState == GameState.PAUSED) {
             timeLine.play();
             setGameState(GameState.PLAYING);
@@ -809,6 +822,8 @@ public class GuiController implements Initializable {
                     hudTimer.play();
                 }
             }
+
+            MusicPlayer.resumeBackgroundMusic();
         }
     }
 
@@ -824,6 +839,8 @@ public class GuiController implements Initializable {
             hudTimer.stop();
         }
 
+        MusicPlayer.stopBackgroundMusic();
+
         mainApp.showGameScene(currentMode);
     }
 
@@ -834,6 +851,9 @@ public class GuiController implements Initializable {
         if (hudTimer != null) {
             hudTimer.stop();
         }
+
+        MusicPlayer.stopBackgroundMusic();
+
         if (mainApp != null) {
             mainApp.showMainMenu();
         }

@@ -23,10 +23,17 @@
             <version>21.0.6</version>
         </dependency>
 
-        <!-- JavaFX FXML library (use to load .fxml file)-->
+        <!-- JavaFX FXML library (used to load .fxml files) -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
+            <version>21.0.6</version>
+        </dependency>
+
+        <!-- JavaFX media library (needed for audio: music + sound effects) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-media</artifactId>
             <version>21.0.6</version>
         </dependency>
 
@@ -49,7 +56,7 @@
 
     <build>
         <plugins>
-            <!-- COmpiler plugin : to tell Maven which Java version to use -->
+            <!-- Compiler plugin : to tell Maven which Java version to use -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -60,7 +67,7 @@
                 </configuration>
             </plugin>
 
-            <!-- JavaFX Maven plugin (JavaFX plugin) for running the app with "mvn javafx::run"-->
+            <!-- JavaFX Maven plugin for running the app with "mvn javafx:run" -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
