@@ -56,6 +56,20 @@ Status tags: **[FIXED]**, **[TODO]**, **[PARTIALLY FIXED]**, **[WONTFIX]**.
 
 ---
 
+### BUG-05 – Falling piece not aligned with grid while moving **[FIXED – Phase 8.1]**
+
+- Symptom: The falling tetromino looked slightly shifted compared to the background grid while moving, and only became perfectly aligned when it reached the bottom or locked in place.
+- Root cause: `GuiController.updateBrickPanelPosition(...)` computed the brick position using `gamePanel` layout coordinates plus a hard-coded cell size (`BRICK_SIZE + gap`). After the new UI and CSS changes, the actual cell spacing of the background grid no longer matched this calculation.
+- Fix:
+  - Rewrote `updateBrickPanelPosition(...)` to use the real background cells in `displayMatrix` as the source of truth:
+    - Take the scene coordinates of the first visible cell (`displayMatrix[HIDDEN_TOP_ROWS][0]`) and the next cell in the same row/next row to measure `cellWidth` and `cellHeight`.
+    - Convert those scene coordinates back into the parent coordinate system of `brickPanel`.
+    - Compute `x / y` from the measured cell size and the board position `(xPosition, yPosition - HIDDEN_TOP_ROWS)`.
+  - Kept a safe fallback path using `BRICK_SIZE + hgap/vgap` if `displayMatrix` is not yet initialised.
+- Result: The falling piece now stays perfectly aligned with the grid at all times, even if the UI layout or CSS is adjusted.
+
+---
+
 ### TEST-01 – Wrong assumption about line clearing **[FIXED]**
 
 - Area: `SimpleBoard.clearRows()` and `SimpleBoardTest.clearRows_removesSingleFullRow`.

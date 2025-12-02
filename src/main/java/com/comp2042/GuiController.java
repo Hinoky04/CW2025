@@ -32,10 +32,10 @@ import java.util.ResourceBundle;
 public class GuiController implements Initializable {
 
     // Size of each cell (brick) in the grid, in pixels.
-    private static final int BRICK_SIZE = 26;
+    private static final int BRICK_SIZE = 30;
 
     // Preview brick size for the NEXT / HOLD panels.
-    private static final int NEXT_BRICK_SIZE = 20;
+    private static final int NEXT_BRICK_SIZE = 24;
 
     // Number of hidden rows at the top of the board (spawn area).
     private static final int HIDDEN_TOP_ROWS = 2;

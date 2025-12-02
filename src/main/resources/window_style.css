@@ -1,165 +1,148 @@
-/* === GLOBAL BACKGROUND ================================================ */
-
-/* Full-window background with your image. */
+/* === GLOBAL BACKGROUND === */
 .root {
-    -fx-background-color: #05060a;              /* fallback if image fails */
+    -fx-background-color: #05060a;
     -fx-background-image: url("background_image.png");
     -fx-background-size: cover;
     -fx-background-repeat: no-repeat;
     -fx-background-position: center;
 }
 
-/* === MAIN BOARD FRAME ================================================= */
-
+/* === MAIN BOARD FRAME === */
 .gameBoard {
     -fx-background-color: linear-gradient(to bottom, #16181f, #05070b);
     -fx-background-radius: 26;
     -fx-border-radius: 30;
-    -fx-border-width: 4;
+    -fx-border-width: 5;
     -fx-border-color: linear-gradient(to bottom, #d0d0d0, #4b4b4b);
     -fx-padding: 18;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 20, 0.3, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.75), 24, 0.4, 0, 4);
 }
 
-/* Extra red glow when the stack is high (danger zone). */
+/* Red glow when near top */
 .dangerBoard {
     -fx-border-color: linear-gradient(to bottom, #ff8080, #ff0000);
     -fx-effect: dropshadow(gaussian, rgba(255,0,0,0.7), 30, 0.6, 0, 0);
 }
 
-/* === PANEL FRAMES (HOLD / NEXT / ANY SMALL CARD) ===================== */
+/* === INNER PANELS FOR HOLD / NEXT / SCORE === */
 
-/* Used in FXML as a wrapper around HOLD and each NEXT preview. */
-.panel-frame {
-    -fx-background-color:
-        linear-gradient(to bottom, rgba(40,40,40,0.95), rgba(15,15,15,0.95));
-    -fx-background-radius: 18;
-    -fx-border-color: rgba(255,255,255,0.85);
-    -fx-border-width: 3;
-    -fx-border-radius: 18;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.85), 18, 0.6, 0, 8);
-}
-
-/* Inner area for HOLD / NEXT – the black rectangle where the mini-bricks sit. */
+/* Dark inner area where the piece squares are drawn */
 .nextBrick {
-    -fx-background-color: rgba(0, 0, 0, 0.8);
-    -fx-background-radius: 12;
-    -fx-border-radius: 12;
-    -fx-border-color: rgba(255, 255, 255, 0.20);
-    -fx-border-width: 1;
-}
-
-/* Label text above HOLD/NEXT panels. */
-.nextBrickLabel {
-    -fx-font-family: "Let's go Digital";
-    -fx-font-size: 18px;
-    -fx-text-fill: #ffffff;
-    -fx-font-weight: bold;
-    -fx-padding: 4 0 2 0;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 6, 0.7, 0, 2);
-}
-
-/* === HUD CARDS (BOTTOM INFORMATION + LEFT STATS) ===================== */
-
-.hud-box {
-    -fx-background-color: rgba(0, 0, 0, 0.65);
+    -fx-background-color: rgba(0, 0, 0, 0.85);
     -fx-background-radius: 16;
     -fx-border-radius: 16;
-    -fx-border-color: rgba(255, 255, 255, 0.18);
-    -fx-border-width: 1.5;
+    -fx-border-width: 2;
+    -fx-border-color: rgba(255,255,255,0.35);
 }
 
-/* General HUD text: score, level, combo, timer, etc. */
+/* Label for HOLD / NEXT */
+.nextBrickLabel {
+    -fx-font-family: "Let's go Digital";
+    -fx-font-size: 16px;
+    -fx-text-fill: #ffffff;
+    -fx-padding: 0 0 6 0;
+}
+
+/* Square silver frame – used by HOLD and SCORE panel.
+   Size is controlled by content (80x80 GridPane + padding),
+   so it will match the NEXT single panel. */
+.panel-frame-square {
+    -fx-background-color: rgba(0,0,0,0.80);
+    -fx-background-radius: 22;
+    -fx-border-radius: 24;
+    -fx-border-width: 3;
+    -fx-border-color: linear-gradient(to bottom, #f5f5f5, #707070);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 18, 0.4, 0, 3);
+}
+
+/* Score panel variant – darker so numbers are clear */
+.score-panel {
+    -fx-background-color: rgba(0,0,0,0.85);
+}
+
+
+/* Tall frame that holds the 3 NEXT previews */
+.next-column-frame {
+    -fx-background-color: rgba(0,0,0,0.80);
+    -fx-background-radius: 26;
+    -fx-border-radius: 28;
+    -fx-border-width: 3;
+    -fx-border-color: rgba(255,255,255,0.40);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.85), 20, 0.45, 0, 4);
+}
+
+/* === HUD TEXT (score / level / lines / combo etc.) === */
+
+.hud-box {
+    -fx-background-color: transparent;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+}
+
 .hud-value {
     -fx-font-family: "Let's go Digital";
-    -fx-font-size: 18px;
-    -fx-fill: #f5f5f5;
-    -fx-text-fill: #f5f5f5;
+    -fx-font-size: 22px;      /* bigger numbers */
+    -fx-fill: #ffffff;
+    -fx-text-fill: #ffffff;
 }
 
-/* Emphasis for mode title. */
 .hud-title {
     -fx-font-size: 22px;
     -fx-font-weight: bold;
 }
 
-/* Slightly smaller text for hints / labels. */
 .hud-subtitle {
     -fx-font-size: 14px;
-    -fx-opacity: 0.9;
+    -fx-font-weight: bold;
+    -fx-fill: #ffd76a;
+    -fx-text-fill: #ffd76a;
 }
 
-/* Danger text inside HUD. */
+/* Danger text */
 .dangerText {
     -fx-fill: #ff5555;
-    -fx-font-size: 18px;
-    -fx-font-weight: bold;
 }
 
 .hud-danger {
-    -fx-font-size: 20px;
     -fx-effect: dropshadow(gaussian, rgba(255,0,0,0.8), 20, 0.4, 0, 0);
 }
 
-/* === BUTTONS & GAME-OVER TEXT ======================================== */
-
-/* Dark metal-style buttons used in pause overlay, etc. */
-.ipad-dark-grey {
-    -fx-background-color:
-        linear-gradient(#686868 0%, #232723 25%, #373837 75%, #757575 100%),
-        linear-gradient(#020b02, #3a3a3a),
-        linear-gradient(#9d9e9d 0%, #6b6a6b 20%, #343534 80%, #242424 100%),
-        linear-gradient(#8a8a8a 0%, #6b6a6b 20%, #343534 80%, #262626 100%),
-        linear-gradient(#777777 0%, #606060 50%, #505250 51%, #2a2b2a 100%);
-    -fx-background-insets: 0, 1, 4, 5, 6;
-    -fx-background-radius: 9, 8, 5, 4, 3;
-    -fx-padding: 8;
-    -fx-font-family: "Let's go Digital";
-    -fx-font-size: 22px;
-    -fx-font-weight: bold;
-    -fx-text-fill: white;
-    -fx-effect: dropshadow(three-pass-box, rgba(255, 255, 255, 0.2), 1, 0.0, 0, 1);
-}
-
-/* Big "GAME OVER" text in the centre panel. */
+/* Game Over title */
 .gameOverStyle {
     -fx-font-family: "Let's go Digital";
-    -fx-font-size: 48;
+    -fx-font-size: 42px;
     -fx-text-fill: white;
     -fx-font-weight: bold;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.9), 12, 0.8, 0, 4);
 }
 
-/* Legacy score style if used anywhere else. */
-.scoreClass {
-    -fx-font-family: "Let's go Digital";
-    -fx-font-size: 38;
-    -fx-fill: yellow;
-    -fx-text-fill: yellow;
+/* Pause / menu buttons */
+.ipad-dark-grey {
+    -fx-background-color: linear-gradient(#555555, #222222);
+    -fx-text-fill: #f5f5f5;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
 }
 
-/* === MISC UTILITY STYLES ============================================= */
+/* === Legacy helpers kept for compatibility === */
 
-/* Brick fill used by some custom nodes (not the JavaFX Rectangles in code). */
 .rectangleStyle {
     -fx-fill: linear-gradient(from 41px 34px to 50px 50px, reflect, #ff7f50 30%, #faebd7 47%);
 }
 
-/* Generic VBox spacing helper (if .vbox is applied). */
-.vbox {
-    -fx-spacing: 12;
-}
-
-/* Helper text (controls / hints) if used. */
 .helpInfo {
     -fx-fill: white;
-    -fx-alignment: center-left;
-    -fx-text-alignment: left;
     -fx-font-size: 10px;
 }
 
-/* Large bonus popup text. */
 .bonusStyle {
     -fx-font-size: 40px;
     -fx-font-weight: bold;
+}
+
+.scoreClass {
+    -fx-font-family: "Let's go Digital";
+    -fx-font-size: 38px;
+    -fx-fill: yellow;
+    -fx-text-fill: yellow;
 }
