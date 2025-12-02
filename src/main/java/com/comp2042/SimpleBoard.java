@@ -215,18 +215,50 @@ public class SimpleBoard implements Board {
 
     @Override
     public ViewData getViewData() {
-        int[][] nextData = brickGenerator.getNextBrick().getShapeMatrix().get(0);
+        // Get up to 3 upcoming bricks from the generator.
+        Brick[] upcomingBricks = brickGenerator.getNextQueue(3);
+        int[][][] nextQueue = null;
+        int[][] nextData = null;
+
+        if (upcomingBricks != null && upcomingBricks.length > 0) {
+            nextQueue = new int[upcomingBricks.length][][];
+            for (int i = 0; i < upcomingBricks.length; i++) {
+                nextQueue[i] = MatrixOperations.copy(upcomingBricks[i].getShapeMatrix().get(0));
+            }
+            // First upcoming piece used for backwards-compatible API.
+            nextData = MatrixOperations.copy(nextQueue[0]);
+        }
+
         int[][] holdData = null;
         if (heldBrick != null) {
             holdData = heldBrick.getShapeMatrix().get(0);
         }
+
         return new ViewData(
                 brickRotator.getCurrentShape(),
                 (int) currentOffset.getX(),
                 (int) currentOffset.getY(),
                 nextData,
+                nextQueue,
                 holdData
         );
+    }
+
+    /**
+     * Returns the upcoming brick queue as shape matrices for preview.
+     * Index 0 is the next brick to spawn.
+     */
+    @Override
+    public int[][][] getNextQueue() {
+        Brick[] upcomingBricks = brickGenerator.getNextQueue(3);
+        if (upcomingBricks == null || upcomingBricks.length == 0) {
+            return null;
+        }
+        int[][][] queue = new int[upcomingBricks.length][][];
+        for (int i = 0; i < upcomingBricks.length; i++) {
+            queue[i] = MatrixOperations.copy(upcomingBricks[i].getShapeMatrix().get(0));
+        }
+        return queue;
     }
 
     /** Merge the falling brick into the background matrix. */

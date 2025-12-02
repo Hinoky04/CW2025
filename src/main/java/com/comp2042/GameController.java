@@ -91,6 +91,7 @@ public class GameController implements InputEventListener {
         Score score = board.getScore();
         guiController.bindScore(score.scoreProperty());
         guiController.bindLevel(score.levelProperty());
+        guiController.bindLines(score.totalLinesProperty());  // LINES counter on HUD
         guiController.bindCombo(score.comboProperty());
 
         totalLinesCleared = 0;

@@ -9,147 +9,209 @@
 <?import javafx.scene.text.Text?>
 <?import java.net.URL?>
 
-<!-- Main game screen. GuiController is the brain behind this layout.
-     Root StackPane fills the window; a centred VBox groups all game UI
-     so it feels like a single machine panel in the middle. -->
 <StackPane fx:controller="com.comp2042.GuiController"
            xmlns:fx="http://javafx.com/fxml">
 
     <children>
-        <!-- Vertical layout in the centre: TOP HUD row, BOARD, BOTTOM HUD row. -->
-        <VBox alignment="CENTER" spacing="30.0">
-            <children>
+        <BorderPane prefWidth="900.0" prefHeight="700.0">
+            <!-- 全局一点 padding，让左右布局不贴边 -->
+            <padding>
+                <Insets top="20.0" bottom="20.0" left="30.0" right="30.0"/>
+            </padding>
 
-                <!-- TOP HUD row: HOLD (left) and NEXT (right). -->
-                <HBox alignment="CENTER" spacing="80.0">
-                    <!-- HOLD panel: label + GridPane reserved for hold preview. -->
-                    <VBox spacing="10.0" alignment="TOP_CENTER">
-                        <padding>
-                            <Insets top="10.0" left="0.0" right="0.0" bottom="0.0"/>
-                        </padding>
-                        <children>
-                            <Label text="HOLD (C)"
-                                   styleClass="nextBrickLabel"/>
-                            <GridPane fx:id="holdBrickPanel"
-                                      hgap="1" vgap="1"
-                                      prefWidth="88.0"
-                                      prefHeight="88.0"
-                                      styleClass="nextBrick"/>
-                        </children>
-                    </VBox>
-
-                    <!-- NEXT preview panel (already wired in GuiController). -->
-                    <VBox spacing="10.0" alignment="TOP_CENTER">
-                        <padding>
-                            <Insets top="10.0" left="0.0" right="0.0" bottom="0.0"/>
-                        </padding>
-                        <children>
-                            <Label text="NEXT" styleClass="nextBrickLabel"/>
-                            <GridPane fx:id="nextBrickPanel"
-                                      hgap="1" vgap="1"
-                                      styleClass="nextBrick"/>
-                        </children>
-                    </VBox>
-                </HBox>
-
-                <!-- CENTRE: game board, falling pieces, notifications and pause overlay. -->
-                <Group>
+            <!-- ========== LEFT: HOLD + SCORE PANEL ========== -->
+            <left>
+                <VBox alignment="CENTER" spacing="30.0">
                     <children>
 
-                        <!-- Outer frame for the main board (border, glow, etc.). -->
-                        <BorderPane styleClass="gameBoard" fx:id="gameBoard">
-                            <center>
-                                <!-- Actual 10xN board where the pieces fall. -->
-                                <GridPane fx:id="gamePanel"
-                                          hgap="1" vgap="1"
-                                          layoutY="30.0" layoutX="40.0"/>
-                            </center>
-                        </BorderPane>
-
-                        <!-- Grid used to display the current falling brick (above the board). -->
-                        <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
-
-                        <!-- Used for pop-up messages (score, etc.) and the GameOverPanel. -->
-                        <Group fx:id="groupNotification" layoutX="14.0" layoutY="203.0">
+                        <!-- HOLD -->
+                        <VBox alignment="TOP_CENTER" spacing="8.0">
                             <children>
-                                <VBox alignment="CENTER">
-                                    <GameOverPanel fx:id="gameOverPanel"/>
-                                </VBox>
-                            </children>
-                        </Group>
+                                <Label text="HOLD (C)" styleClass="nextBrickLabel"/>
 
-                        <!-- Pause overlay: dim background + small pause menu. Always on top. -->
-                        <Pane fx:id="pauseOverlay"
-                              layoutX="0.0" layoutY="0.0"
-                              prefWidth="400.0" prefHeight="500.0"
-                              visible="false"
-                              style="-fx-background-color: rgba(0,0,0,0.5);">
+                                <!-- 外框 -->
+                                <StackPane styleClass="panel-frame">
+                                    <padding>
+                                        <Insets top="10.0" right="10.0" bottom="10.0" left="10.0"/>
+                                    </padding>
+                                    <children>
+                                        <GridPane fx:id="holdBrickPanel"
+                                                  hgap="1" vgap="1"
+                                                  prefWidth="96.0" prefHeight="96.0"
+                                                  styleClass="nextBrick"/>
+                                    </children>
+                                </StackPane>
+                            </children>
+                        </VBox>
+
+                        <!-- SCORE / LEVEL / LINES / COMBO -->
+                        <VBox spacing="6.0" alignment="TOP_LEFT" styleClass="hud-box">
+                            <padding>
+                                <Insets top="10.0" right="16.0" bottom="10.0" left="16.0"/>
+                            </padding>
                             <children>
-                                <VBox alignment="CENTER" spacing="10" layoutX="60.0" layoutY="180.0">
-                                    <Label text="PAUSED" styleClass="gameOverStyle"/>
+                                <Text text="SCORE" styleClass="hud-value hud-subtitle"/>
+                                <Text fx:id="scoreText" text="Score 0" styleClass="hud-value"/>
 
-                                    <!-- Buttons only have fx:id; actions are wired in GuiController. -->
-                                    <Button fx:id="resumeButton"
-                                            text="Resume"
-                                            styleClass="ipad-dark-grey"/>
+                                <Text text="LEVEL" styleClass="hud-value hud-subtitle"/>
+                                <Text fx:id="levelText" text="Level 1" styleClass="hud-value"/>
 
-                                    <Button fx:id="restartButton"
-                                            text="Restart"
-                                            styleClass="ipad-dark-grey"/>
+                                <Text text="LINES" styleClass="hud-value hud-subtitle"/>
+                                <Text fx:id="linesText" text="Lines 0" styleClass="hud-value"/>
 
-                                    <Button fx:id="pauseMenuButton"
-                                            text="Main Menu"
-                                            styleClass="ipad-dark-grey"/>
-                                </VBox>
+                                <Text text="COMBO" styleClass="hud-value hud-subtitle"/>
+                                <Text fx:id="comboText" text="Combo x0" styleClass="hud-value"/>
                             </children>
-                        </Pane>
+                        </VBox>
 
                     </children>
-                </Group>
+                </VBox>
+            </left>
 
-                <!-- BOTTOM HUD row: mode / score / level / time / progress / best / combo / danger + controls hint. -->
-                <HBox alignment="CENTER" spacing="80.0">
-                    <VBox spacing="5.0" alignment="TOP_LEFT" styleClass="hud-box">
-                        <padding>
-                            <Insets top="10.0" right="20.0" bottom="0.0" left="20.0"/>
-                        </padding>
-                        <children>
-                            <!-- Mode label: set dynamically from GameMode. -->
-                            <Text fx:id="modeText" text="Mode: Classic" styleClass="hud-value"/>
+            <!-- ========== CENTER: BOARD + BRICK + OVERLAYS ========== -->
+            <center>
+                <StackPane alignment="CENTER">
+                    <children>
+                        <Group>
+                            <children>
 
-                            <!-- New: per-mode hint line (set by GuiController). -->
-                            <Text fx:id="modeHintText"
-                                  text="Classic: standard Tetris rules."
-                                  styleClass="hud-value"/>
+                                <!-- 主棋盘外框 -->
+                                <BorderPane fx:id="gameBoard" styleClass="gameBoard">
+                                    <center>
+                                        <!-- 10xN grid -->
+                                        <GridPane fx:id="gamePanel"
+                                                  hgap="1" vgap="1"
+                                                  layoutY="30.0" layoutX="40.0"/>
+                                    </center>
+                                </BorderPane>
 
-                            <Text fx:id="scoreText" text="Score 0" styleClass="hud-value"/>
-                            <Text fx:id="levelText" text="Level 1" styleClass="hud-value"/>
-                            <Text fx:id="timerText" text="Time 00:00" styleClass="hud-value"/>
+                                <!-- 掉落中的方块 -->
+                                <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
 
-                            <!-- Generic progress line used differently per mode (Rush / Survival, etc.). -->
-                            <Text fx:id="progressText" text="" styleClass="hud-value"/>
+                                <!-- 通知 + GameOverPanel -->
+                                <Group fx:id="groupNotification" layoutX="14.0" layoutY="203.0">
+                                    <children>
+                                        <VBox alignment="CENTER">
+                                            <GameOverPanel fx:id="gameOverPanel"/>
+                                        </VBox>
+                                    </children>
+                                </Group>
 
-                            <!-- Best record line (score, and time for Rush-40). -->
-                            <Text fx:id="bestText" text="Best Score 0" styleClass="hud-value"/>
+                                <!-- 暂停遮罩 -->
+                                <Pane fx:id="pauseOverlay"
+                                      layoutX="0.0" layoutY="0.0"
+                                      prefWidth="400.0" prefHeight="500.0"
+                                      visible="false"
+                                      style="-fx-background-color: rgba(0,0,0,0.5);">
+                                    <children>
+                                        <VBox alignment="CENTER" spacing="10.0" layoutX="60.0" layoutY="180.0">
+                                            <Label text="PAUSED" styleClass="gameOverStyle"/>
 
-                            <Text fx:id="comboText" text="Combo x0" styleClass="hud-value"/>
-                            <Text fx:id="dangerText"
-                                  text="DANGER!"
-                                  visible="false"
-                                  styleClass="dangerText hud-value hud-danger"/>
+                                            <Button fx:id="resumeButton"
+                                                    text="Resume"
+                                                    styleClass="ipad-dark-grey"/>
 
-                            <!-- Simple control hint so players know how to use hold. -->
-                            <Text text="Controls: ← → move, ↑ rotate, ↓ soft drop, C hold/swap"
-                                  styleClass="hud-value"/>
-                        </children>
-                    </VBox>
+                                            <Button fx:id="restartButton"
+                                                    text="Restart"
+                                                    styleClass="ipad-dark-grey"/>
+
+                                            <Button fx:id="pauseMenuButton"
+                                                    text="Main Menu"
+                                                    styleClass="ipad-dark-grey"/>
+                                        </VBox>
+                                    </children>
+                                </Pane>
+
+                            </children>
+                        </Group>
+                    </children>
+                </StackPane>
+            </center>
+
+            <!-- ========== RIGHT: 3-NEXT QUEUE ========== -->
+            <right>
+                <VBox alignment="CENTER" spacing="16.0">
+                    <children>
+                        <Label text="NEXT" styleClass="nextBrickLabel"/>
+
+                        <!-- NEXT 1 -->
+                        <StackPane styleClass="panel-frame">
+                            <padding>
+                                <Insets top="8.0" right="8.0" bottom="8.0" left="8.0"/>
+                            </padding>
+                            <children>
+                                <GridPane fx:id="nextBrickPanelTop"
+                                          hgap="1" vgap="1"
+                                          prefWidth="80.0" prefHeight="80.0"
+                                          styleClass="nextBrick"/>
+                            </children>
+                        </StackPane>
+
+                        <!-- NEXT 2 -->
+                        <StackPane styleClass="panel-frame">
+                            <padding>
+                                <Insets top="8.0" right="8.0" bottom="8.0" left="8.0"/>
+                            </padding>
+                            <children>
+                                <GridPane fx:id="nextBrickPanelMid"
+                                          hgap="1" vgap="1"
+                                          prefWidth="80.0" prefHeight="80.0"
+                                          styleClass="nextBrick"/>
+                            </children>
+                        </StackPane>
+
+                        <!-- NEXT 3 -->
+                        <StackPane styleClass="panel-frame">
+                            <padding>
+                                <Insets top="8.0" right="8.0" bottom="8.0" left="8.0"/>
+                            </padding>
+                            <children>
+                                <GridPane fx:id="nextBrickPanelBottom"
+                                          hgap="1" vgap="1"
+                                          prefWidth="80.0" prefHeight="80.0"
+                                          styleClass="nextBrick"/>
+                            </children>
+                        </StackPane>
+                    </children>
+                </VBox>
+            </right>
+
+            <!-- ========== BOTTOM: MODE / TIMER / PROGRESS / BEST / DANGER ========== -->
+            <bottom>
+                <HBox alignment="CENTER" spacing="40.0">
+                    <children>
+                        <VBox spacing="5.0" alignment="TOP_LEFT" styleClass="hud-box">
+                            <padding>
+                                <Insets top="10.0" right="20.0" bottom="10.0" left="20.0"/>
+                            </padding>
+                            <children>
+                                <Text fx:id="modeText" text="Mode: Classic" styleClass="hud-value hud-title"/>
+
+                                <Text fx:id="modeHintText"
+                                      text="Classic: standard Tetris rules."
+                                      styleClass="hud-value hud-subtitle"/>
+
+                                <Text fx:id="timerText" text="Time 00:00" styleClass="hud-value"/>
+
+                                <!-- Progress: Survival/Rush 用 -->
+                                <Text fx:id="progressText" text="" styleClass="hud-value"/>
+
+                                <!-- Best Score / Time -->
+                                <Text fx:id="bestText" text="Best Score 0" styleClass="hud-value"/>
+
+                                <!-- Danger 标记 -->
+                                <Text fx:id="dangerText"
+                                      text="DANGER!"
+                                      visible="false"
+                                      styleClass="dangerText hud-value hud-danger"/>
+                            </children>
+                        </VBox>
+                    </children>
                 </HBox>
-
-            </children>
-        </VBox>
+            </bottom>
+        </BorderPane>
     </children>
 
-    <!-- Global styles for this scene (board border, fonts, colours, etc.). -->
     <stylesheets>
         <URL value="@window_style.css"/>
     </stylesheets>

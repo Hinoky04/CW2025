@@ -7,6 +7,7 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Bounds;
 import javafx.scene.Group;
 import javafx.scene.control.Button;
 import javafx.scene.input.KeyCode;
@@ -39,9 +40,6 @@ public class GuiController implements Initializable {
     // Number of hidden rows at the top of the board (spawn area).
     private static final int HIDDEN_TOP_ROWS = 2;
 
-    // Y offset for the brickPanel so it lines up visually with the grid.
-    private static final int BRICK_PANEL_Y_OFFSET = -42;
-
     // === Configurable values (defaults tuned roughly for Classic mode) ===
 
     // Base fall interval (ms) before level scaling is applied.
@@ -66,10 +64,15 @@ public class GuiController implements Initializable {
     private GridPane brickPanel;         // grid used to display current piece
 
     @FXML
-    private GridPane nextBrickPanel;     // grid used to display NEXT preview
-
-    @FXML
     private GridPane holdBrickPanel;     // grid used to display HOLD preview
+
+    // Three NEXT preview panels (top / middle / bottom of queue).
+    @FXML
+    private GridPane nextBrickPanelTop;
+    @FXML
+    private GridPane nextBrickPanelMid;
+    @FXML
+    private GridPane nextBrickPanelBottom;
 
     @FXML
     private GameOverPanel gameOverPanel; // overlay shown when the game ends
@@ -91,6 +94,9 @@ public class GuiController implements Initializable {
 
     @FXML
     private Text levelText;              // shows current level in the HUD
+
+    @FXML
+    private Text linesText;              // shows total cleared lines in the HUD
 
     @FXML
     private Text timerText;              // shows elapsed time in the HUD
@@ -123,8 +129,10 @@ public class GuiController implements Initializable {
     // Current falling piece cells.
     private Rectangle[][] rectangles;
 
-    // NEXT preview cells.
-    private Rectangle[][] nextBrickRectangles;
+    // NEXT preview cells (for 3 upcoming bricks).
+    private Rectangle[][] nextBrickRectanglesTop;
+    private Rectangle[][] nextBrickRectanglesMid;
+    private Rectangle[][] nextBrickRectanglesBottom;
 
     // HOLD preview cells.
     private Rectangle[][] holdBrickRectangles;
@@ -348,7 +356,6 @@ public class GuiController implements Initializable {
 
         if (code == KeyCode.DOWN || code == KeyCode.S) {
             moveDown(new MoveEvent(EventType.DOWN, EventSource.USER));
-            // soft drop counts as movement; optional:
             SoundManager.playMove();
             event.consume();
         }
@@ -404,7 +411,6 @@ public class GuiController implements Initializable {
         }
     }
 
-
     private void initFallingBrick(ViewData brick) {
         int[][] brickData = brick.getBrickData();
         rectangles = new Rectangle[brickData.length][brickData[0].length];
@@ -419,27 +425,128 @@ public class GuiController implements Initializable {
         updateBrickPanelPosition(brick);
     }
 
+    // === NEXT (3-queue) initialisation & refresh ===
+
     private void initNextBrick(ViewData brick) {
-        if (nextBrickPanel == null) {
-            return;
+        int[][][] queue = brick.getNextQueue();
+
+        if ((queue == null || queue.length == 0) && brick.getNextBrickData() != null) {
+            queue = new int[][][]{brick.getNextBrickData()};
         }
-        int[][] nextData = brick.getNextBrickData();
-        if (nextData == null || nextData.length == 0 || nextData[0].length == 0) {
+        if (queue == null || queue.length == 0) {
+            clearNextPanels();
             return;
         }
 
-        nextBrickRectangles = new Rectangle[nextData.length][nextData[0].length];
-        nextBrickPanel.getChildren().clear();
+        nextBrickRectanglesTop = initNextPreviewPanel(
+                nextBrickPanelTop,
+                queue.length > 0 ? queue[0] : null
+        );
+        nextBrickRectanglesMid = initNextPreviewPanel(
+                nextBrickPanelMid,
+                queue.length > 1 ? queue[1] : null
+        );
+        nextBrickRectanglesBottom = initNextPreviewPanel(
+                nextBrickPanelBottom,
+                queue.length > 2 ? queue[2] : null
+        );
+    }
 
-        for (int row = 0; row < nextData.length; row++) {
-            for (int col = 0; col < nextData[row].length; col++) {
+    private Rectangle[][] initNextPreviewPanel(GridPane panel, int[][] data) {
+        if (panel == null) {
+            return null;
+        }
+        panel.getChildren().clear();
+
+        if (data == null || data.length == 0 || data[0].length == 0) {
+            return null;
+        }
+
+        Rectangle[][] rects = new Rectangle[data.length][data[0].length];
+        for (int row = 0; row < data.length; row++) {
+            for (int col = 0; col < data[row].length; col++) {
                 Rectangle cell = new Rectangle(NEXT_BRICK_SIZE, NEXT_BRICK_SIZE);
-                cell.setFill(getFillColor(nextData[row][col]));
-                nextBrickRectangles[row][col] = cell;
-                nextBrickPanel.add(cell, col, row);
+                cell.setFill(getFillColor(data[row][col]));
+                rects[row][col] = cell;
+                panel.add(cell, col, row);
             }
         }
+        return rects;
     }
+
+    private void clearNextPanels() {
+        if (nextBrickPanelTop != null) {
+            nextBrickPanelTop.getChildren().clear();
+        }
+        if (nextBrickPanelMid != null) {
+            nextBrickPanelMid.getChildren().clear();
+        }
+        if (nextBrickPanelBottom != null) {
+            nextBrickPanelBottom.getChildren().clear();
+        }
+        nextBrickRectanglesTop = null;
+        nextBrickRectanglesMid = null;
+        nextBrickRectanglesBottom = null;
+    }
+
+    private Rectangle[][] refreshNextPreviewPanel(GridPane panel,
+                                                  Rectangle[][] existing,
+                                                  int[][] data) {
+        if (panel == null) {
+            return null;
+        }
+
+        if (data == null || data.length == 0 || data[0].length == 0) {
+            panel.getChildren().clear();
+            return null;
+        }
+
+        if (existing == null
+                || existing.length != data.length
+                || existing[0].length != data[0].length) {
+            return initNextPreviewPanel(panel, data);
+        }
+
+        for (int row = 0; row < data.length; row++) {
+            for (int col = 0; col < data[row].length; col++) {
+                Rectangle rect = existing[row][col];
+                if (rect != null) {
+                    rect.setFill(getFillColor(data[row][col]));
+                }
+            }
+        }
+        return existing;
+    }
+
+    private void refreshNextBrick(ViewData brick) {
+        int[][][] queue = brick.getNextQueue();
+
+        if ((queue == null || queue.length == 0) && brick.getNextBrickData() != null) {
+            queue = new int[][][]{brick.getNextBrickData()};
+        }
+        if (queue == null || queue.length == 0) {
+            clearNextPanels();
+            return;
+        }
+
+        nextBrickRectanglesTop = refreshNextPreviewPanel(
+                nextBrickPanelTop,
+                nextBrickRectanglesTop,
+                queue.length > 0 ? queue[0] : null
+        );
+        nextBrickRectanglesMid = refreshNextPreviewPanel(
+                nextBrickPanelMid,
+                nextBrickRectanglesMid,
+                queue.length > 1 ? queue[1] : null
+        );
+        nextBrickRectanglesBottom = refreshNextPreviewPanel(
+                nextBrickPanelBottom,
+                nextBrickRectanglesBottom,
+                queue.length > 2 ? queue[2] : null
+        );
+    }
+
+    // === HOLD initialisation & refresh ===
 
     private void initHoldBrick(ViewData brick) {
         if (holdBrickPanel == null) {
@@ -462,32 +569,6 @@ public class GuiController implements Initializable {
                 cell.setFill(getFillColor(holdData[row][col]));
                 holdBrickRectangles[row][col] = cell;
                 holdBrickPanel.add(cell, col, row);
-            }
-        }
-    }
-
-    private void refreshNextBrick(ViewData brick) {
-        if (nextBrickPanel == null) {
-            return;
-        }
-        int[][] nextData = brick.getNextBrickData();
-        if (nextData == null || nextData.length == 0 || nextData[0].length == 0) {
-            return;
-        }
-
-        if (nextBrickRectangles == null
-                || nextBrickRectangles.length != nextData.length
-                || nextBrickRectangles[0].length != nextData[0].length) {
-            initNextBrick(brick);
-            return;
-        }
-
-        for (int row = 0; row < nextData.length; row++) {
-            for (int col = 0; col < nextData[row].length; col++) {
-                Rectangle rect = nextBrickRectangles[row][col];
-                if (rect != null) {
-                    rect.setFill(getFillColor(nextData[row][col]));
-                }
             }
         }
     }
@@ -583,26 +664,70 @@ public class GuiController implements Initializable {
 
     /**
      * Moves the brickPanel so that the falling piece lines up exactly with
-     * the background grid inside gamePanel. This uses the same cell size
-     * and gaps as the background rectangles, so there is no wobble.
+     * the background grid inside gamePanel. Uses the actual background cells
+     * as the source of truth so there is no drift.
      */
     private void updateBrickPanelPosition(ViewData brick) {
-        // Size of one cell including the 1px gap from the GridPane.
+        if (gamePanel == null || brickPanel == null) {
+            return;
+        }
+
+        // Prefer using the real background cells if they exist.
+        if (displayMatrix != null
+                && displayMatrix.length > HIDDEN_TOP_ROWS
+                && displayMatrix[HIDDEN_TOP_ROWS].length > 1
+                && displayMatrix[HIDDEN_TOP_ROWS][0] != null
+                && displayMatrix[HIDDEN_TOP_ROWS][1] != null) {
+
+            Rectangle originCell = displayMatrix[HIDDEN_TOP_ROWS][0];
+            Rectangle nextCellInRow = displayMatrix[HIDDEN_TOP_ROWS][1];
+
+            Bounds originScene = originCell.localToScene(originCell.getBoundsInLocal());
+            Bounds originInParent = brickPanel.getParent().sceneToLocal(originScene);
+
+            Bounds nextScene = nextCellInRow.localToScene(nextCellInRow.getBoundsInLocal());
+            Bounds nextInParent = brickPanel.getParent().sceneToLocal(nextScene);
+
+            double originX = originInParent.getMinX();
+            double originY = originInParent.getMinY();
+
+            double cellWidth = nextInParent.getMinX() - originX;
+
+            double cellHeight;
+            if (displayMatrix.length > HIDDEN_TOP_ROWS + 1
+                    && displayMatrix[HIDDEN_TOP_ROWS + 1][0] != null) {
+                Rectangle belowCell = displayMatrix[HIDDEN_TOP_ROWS + 1][0];
+                Bounds belowScene = belowCell.localToScene(belowCell.getBoundsInLocal());
+                Bounds belowInParent = brickPanel.getParent().sceneToLocal(belowScene);
+                cellHeight = belowInParent.getMinY() - originY;
+            } else {
+                cellHeight = BRICK_SIZE + gamePanel.getVgap();
+            }
+
+            double x = originX + brick.getxPosition() * cellWidth;
+            double y = originY + (brick.getyPosition() - HIDDEN_TOP_ROWS) * cellHeight;
+
+            brickPanel.setLayoutX(x);
+            brickPanel.setLayoutY(y);
+            return;
+        }
+
+        // Fallback path.
         double cellWidth = BRICK_SIZE + gamePanel.getHgap();
         double cellHeight = BRICK_SIZE + gamePanel.getVgap();
 
-        // xPosition/yPosition are in board coordinates (0..columns/rows-1).
-        double x = gamePanel.getLayoutX() + brick.getxPosition() * cellWidth;
+        Bounds boardSceneBounds = gamePanel.localToScene(gamePanel.getBoundsInLocal());
+        Bounds boardInParent = brickPanel.getParent().sceneToLocal(boardSceneBounds);
 
-        // Subtract hidden top rows so row 2 of the logical board appears
-        // as row 0 in the visible grid.
-        double y = gamePanel.getLayoutY()
-                + (brick.getyPosition() - HIDDEN_TOP_ROWS) * cellHeight;
+        double originX = boardInParent.getMinX();
+        double originY = boardInParent.getMinY();
+
+        double x = originX + brick.getxPosition() * cellWidth;
+        double y = originY + (brick.getyPosition() - HIDDEN_TOP_ROWS) * cellHeight;
 
         brickPanel.setLayoutX(x);
         brickPanel.setLayoutY(y);
     }
-
 
     private Paint getFillColor(int value) {
         switch (value) {
@@ -756,6 +881,12 @@ public class GuiController implements Initializable {
 
         levelProperty.addListener((obs, oldLevel, newLevel) ->
                 onLevelChanged(newLevel.intValue()));
+    }
+
+    public void bindLines(IntegerProperty linesProperty) {
+        if (linesText != null) {
+            linesText.textProperty().bind(linesProperty.asString("Lines %d"));
+        }
     }
 
     public void bindCombo(IntegerProperty comboProperty) {
@@ -1027,7 +1158,7 @@ public class GuiController implements Initializable {
         }
     }
 
-    // === Result screen helper (Phase 7.6) ===
+    // === Result screen helper ===
 
     /**
      * Shows the final result panel and updates best records.
