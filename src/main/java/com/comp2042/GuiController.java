@@ -269,10 +269,18 @@ public class GuiController implements Initializable {
         gamePanel.requestFocus();
         gamePanel.setOnKeyPressed(this::handleKeyPressed);
 
-        // Hide the active-brick layer until layout is calibrated,
-        // so we don't see a "blurry" first frame.
+        // Snap everything to pixel boundaries to avoid blurry edges.
+        gamePanel.setSnapToPixel(true);
+        if (gameBoard != null) {
+            gameBoard.setSnapToPixel(true);
+        }
+
+        // The falling-brick overlay is positioned manually; don't let layout move it.
         if (brickPanel != null) {
-            brickPanel.setVisible(false);
+            brickPanel.setVisible(false);          // hidden until layout is calibrated
+            brickPanel.setManaged(false);          // excluded from parent layout
+            brickPanel.setMouseTransparent(true);  // clicks go to underlying nodes
+            brickPanel.setSnapToPixel(true);
         }
 
         // Wire game-over panel buttons to restart / main menu.
@@ -369,7 +377,7 @@ public class GuiController implements Initializable {
         }
 
         if (code == KeyCode.DOWN || code == KeyCode.S) {
-            moveDown(new MoveEvent(EventType.DOWN, EventSource.USER));
+            moveDown(new MoveEvent(EventType.DOWN, EventSource.THREAD));
             SoundManager.playMove();
             event.consume();
         }
@@ -1182,7 +1190,7 @@ public class GuiController implements Initializable {
                                  double timeSeconds,
                                  boolean isWin) {
 
-        // Update best score / best Rush-40 timea.
+        // Update best score / best Rush-40 time.
         updateBestInfo(mode, finalScore, timeSeconds);
 
         // Populate result panel.

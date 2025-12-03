@@ -25,8 +25,7 @@
             <children>
 
                 <!-- ================= TOP AREA: HOLD | BOARD | NEXT ================= -->
-                <GridPane alignment="CENTER" hgap="40.0"
-                          scaleX="1.10" scaleY="1.10">
+                <GridPane alignment="CENTER" hgap="40.0">
                     <columnConstraints>
                         <!-- side columns narrower; center column fixed -->
                         <ColumnConstraints prefWidth="200.0" halignment="CENTER" hgrow="NEVER"/>
@@ -48,7 +47,7 @@
                               fillWidth="false">
                             <children>
 
-                                <!-- HOLD panel: outer shell now EXACTLY same as SCORE (panel-frame-square + score-panel) -->
+                                <!-- HOLD panel -->
                                 <StackPane prefWidth="180.0" styleClass="panel-frame-square score-panel">
                                     <padding>
                                         <Insets top="6.0" right="6.0" bottom="6.0" left="6.0"/>
@@ -64,11 +63,13 @@
                                                         <Label text="HOLD (C)"
                                                                styleClass="score-section-title"/>
 
-                                                        <!-- Center the preview window -->
+                                                        <!-- Center the preview window (bigger square) -->
                                                         <StackPane alignment="CENTER">
                                                             <GridPane fx:id="holdBrickPanel"
                                                                       hgap="1" vgap="1"
-                                                                      prefWidth="80.0" prefHeight="80.0"
+                                                                      prefWidth="96.0" prefHeight="96.0"
+                                                                      maxWidth="-Infinity"
+                                                                      maxHeight="-Infinity"
                                                                       styleClass="nextBrick"/>
                                                         </StackPane>
                                                     </children>
@@ -150,62 +151,56 @@
                                    alignment="CENTER"
                                    maxHeight="Infinity">
                             <children>
-                                <Group>
+
+                                <!-- Board frame -->
+                                <BorderPane fx:id="gameBoard"
+                                            styleClass="gameBoard"
+                                            prefWidth="360.0"
+                                            prefHeight="640.0">
+                                    <center>
+                                        <GridPane fx:id="gamePanel"
+                                                  hgap="1" vgap="1"/>
+                                    </center>
+                                </BorderPane>
+
+                                <!-- Falling brick (overlay). brickPanel is unmanaged in controller -->
+                                <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
+
+                                <!-- Notifications + GameOverPanel -->
+                                <Group fx:id="groupNotification"
+                                       layoutX="14.0"
+                                       layoutY="203.0">
                                     <children>
-
-                                        <!-- Board frame -->
-                                        <BorderPane fx:id="gameBoard"
-                                                    styleClass="gameBoard"
-                                                    prefWidth="360.0"
-                                                    prefHeight="640.0">
-                                            <center>
-                                                <GridPane fx:id="gamePanel"
-                                                          hgap="1" vgap="1"
-                                                          layoutY="30.0" layoutX="40.0"/>
-                                            </center>
-                                        </BorderPane>
-
-                                        <!-- Falling brick -->
-                                        <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
-
-                                        <!-- Notifications + GameOverPanel -->
-                                        <Group fx:id="groupNotification"
-                                               layoutX="14.0"
-                                               layoutY="203.0">
-                                            <children>
-                                                <VBox alignment="CENTER">
-                                                    <GameOverPanel fx:id="gameOverPanel"/>
-                                                </VBox>
-                                            </children>
-                                        </Group>
-
-                                        <!-- Pause overlay -->
-                                        <Pane fx:id="pauseOverlay"
-                                              layoutX="0.0" layoutY="0.0"
-                                              visible="false"
-                                              style="-fx-background-color: rgba(0,0,0,0.5);">
-                                            <children>
-                                                <VBox alignment="CENTER" spacing="10.0"
-                                                      layoutX="60.0" layoutY="180.0">
-                                                    <Label text="PAUSED" styleClass="gameOverStyle"/>
-
-                                                    <Button fx:id="resumeButton"
-                                                            text="Resume"
-                                                            styleClass="ipad-dark-grey"/>
-
-                                                    <Button fx:id="restartButton"
-                                                            text="Restart"
-                                                            styleClass="ipad-dark-grey"/>
-
-                                                    <Button fx:id="pauseMenuButton"
-                                                            text="Main Menu"
-                                                            styleClass="ipad-dark-grey"/>
-                                                </VBox>
-                                            </children>
-                                        </Pane>
-
+                                        <VBox alignment="CENTER">
+                                            <GameOverPanel fx:id="gameOverPanel"/>
+                                        </VBox>
                                     </children>
                                 </Group>
+
+                                <!-- Pause overlay -->
+                                <Pane fx:id="pauseOverlay"
+                                      visible="false"
+                                      style="-fx-background-color: rgba(0,0,0,0.5);">
+                                    <children>
+                                        <VBox alignment="CENTER" spacing="10.0"
+                                              layoutX="60.0" layoutY="180.0">
+                                            <Label text="PAUSED" styleClass="gameOverStyle"/>
+
+                                            <Button fx:id="resumeButton"
+                                                    text="Resume"
+                                                    styleClass="ipad-dark-grey"/>
+
+                                            <Button fx:id="restartButton"
+                                                    text="Restart"
+                                                    styleClass="ipad-dark-grey"/>
+
+                                            <Button fx:id="pauseMenuButton"
+                                                    text="Main Menu"
+                                                    styleClass="ipad-dark-grey"/>
+                                        </VBox>
+                                    </children>
+                                </Pane>
+
                             </children>
                         </StackPane>
 
@@ -216,7 +211,7 @@
                               spacing="14.0"
                               maxHeight="Infinity">
                             <children>
-                                <!-- NEXT shell now also uses panel-frame-square + score-panel -->
+                                <!-- NEXT shell -->
                                 <StackPane prefWidth="180.0" styleClass="panel-frame-square score-panel">
                                     <padding>
                                         <Insets top="6.0" right="6.0" bottom="6.0" left="6.0"/>
@@ -240,21 +235,27 @@
                                                                 <StackPane alignment="CENTER">
                                                                     <GridPane fx:id="nextBrickPanelTop"
                                                                               hgap="1" vgap="1"
-                                                                              prefWidth="80.0" prefHeight="80.0"
+                                                                              prefWidth="96.0" prefHeight="96.0"
+                                                                              maxWidth="-Infinity"
+                                                                              maxHeight="-Infinity"
                                                                               styleClass="nextBrick"/>
                                                                 </StackPane>
 
                                                                 <StackPane alignment="CENTER">
                                                                     <GridPane fx:id="nextBrickPanelMid"
                                                                               hgap="1" vgap="1"
-                                                                              prefWidth="80.0" prefHeight="80.0"
+                                                                              prefWidth="96.0" prefHeight="96.0"
+                                                                              maxWidth="-Infinity"
+                                                                              maxHeight="-Infinity"
                                                                               styleClass="nextBrick"/>
                                                                 </StackPane>
 
                                                                 <StackPane alignment="CENTER">
                                                                     <GridPane fx:id="nextBrickPanelBottom"
                                                                               hgap="1" vgap="1"
-                                                                              prefWidth="80.0" prefHeight="80.0"
+                                                                              prefWidth="96.0" prefHeight="96.0"
+                                                                              maxWidth="-Infinity"
+                                                                              maxHeight="-Infinity"
                                                                               styleClass="nextBrick"/>
                                                                 </StackPane>
 
