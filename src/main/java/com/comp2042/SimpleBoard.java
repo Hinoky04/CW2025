@@ -37,6 +37,7 @@ public class SimpleBoard implements Board {
 
     /**
      * Construct a board with the given logical size.
+     *
      * @param rows    number of rows (including hidden rows at the top)
      * @param columns number of columns
      */
@@ -54,6 +55,7 @@ public class SimpleBoard implements Board {
 
     /**
      * Move the current brick down by one cell.
+     *
      * @return true if move succeeded, false if blocked
      */
     @Override
@@ -61,13 +63,17 @@ public class SimpleBoard implements Board {
         return tryMove(0, 1);
     }
 
-    /** Move the current brick left by one cell. */
+    /**
+     * Move the current brick left by one cell.
+     */
     @Override
     public boolean moveBrickLeft() {
         return tryMove(-1, 0);
     }
 
-    /** Move the current brick right by one cell. */
+    /**
+     * Move the current brick right by one cell.
+     */
     @Override
     public boolean moveBrickRight() {
         return tryMove(1, 0);
@@ -75,17 +81,35 @@ public class SimpleBoard implements Board {
 
     /**
      * Shared helper for moving the brick by a given offset.
+     *
+     * It also enforces that the shape stays fully inside the horizontal
+     * board bounds so the active piece never sticks out of the board.
+     *
      * @return true if move is valid (no collision)
      */
     private boolean tryMove(int dx, int dy) {
+        if (currentBrick == null || currentOffset == null) {
+            return false;
+        }
+
         int[][] snapshot = MatrixOperations.copy(boardMatrix);
         Point next = new Point(currentOffset);
         next.translate(dx, dy);
+
+        int nextX = (int) next.getX();
+        int nextY = (int) next.getY();
+        int[][] currentShape = brickRotator.getCurrentShape();
+
+        // Prevent moving outside horizontal bounds.
+        if (!isWithinHorizontalBounds(currentShape, nextX)) {
+            return false;
+        }
+
         boolean conflict = MatrixOperations.intersect(
                 snapshot,
-                brickRotator.getCurrentShape(),
-                (int) next.getX(),
-                (int) next.getY()
+                currentShape,
+                nextX,
+                nextY
         );
         if (conflict) {
             return false;
@@ -96,51 +120,95 @@ public class SimpleBoard implements Board {
 
     /**
      * Rotate the current brick to its next orientation.
-     * Uses a simple wall-kick so rotations near the border are less frustrating.
+     *
+     * Strategy:
+     *   1. Try rotating in place at the current offset.
+     *   2. If that fails, try a small set of horizontal "kicks":
+     *      dx in { -1, +1, -2, +2 }.
+     *   3. The first position that is inside the board and collision-free
+     *      is accepted.
+     *
+     * This gives a symmetric, Tetris-style wall kick on both left and right
+     * edges without moving the board itself.
      */
     @Override
     public boolean rotateLeftBrick() {
+        if (currentBrick == null || currentOffset == null) {
+            return false;
+        }
+
         int[][] snapshot = MatrixOperations.copy(boardMatrix);
         NextShapeInfo nextShape = brickRotator.getNextShape();
+        int[][] nextShapeMatrix = nextShape.getShape();
 
         int currentX = (int) currentOffset.getX();
         int currentY = (int) currentOffset.getY();
 
-        // 1) Try rotating in place first.
-        boolean conflictInPlace = MatrixOperations.intersect(
-                snapshot,
-                nextShape.getShape(),
-                currentX,
-                currentY
-        );
-        if (!conflictInPlace) {
-            brickRotator.setCurrentShape(nextShape.getPosition());
-            return true;
-        }
+        // Candidate horizontal offsets: in place, then small kicks.
+        int[] kicks = {0, -1, 1, -2, 2};
 
-        // 2) Simple horizontal wall kick: try shifting one cell left or right.
-        int[] kicks = {-1, 1};
         for (int dx : kicks) {
-            int kickedX = currentX + dx;
-            boolean conflictWithKick = MatrixOperations.intersect(
+            int newX = currentX + dx;
+
+            // Must stay inside horizontal bounds.
+            if (!isWithinHorizontalBounds(nextShapeMatrix, newX)) {
+                continue;
+            }
+
+            boolean conflict = MatrixOperations.intersect(
                     snapshot,
-                    nextShape.getShape(),
-                    kickedX,
+                    nextShapeMatrix,
+                    newX,
                     currentY
             );
-            if (!conflictWithKick) {
+
+            if (!conflict) {
+                // Apply this rotation + horizontal shift.
                 brickRotator.setCurrentShape(nextShape.getPosition());
-                currentOffset.translate(dx, 0);
+                currentOffset.setLocation(newX, currentY);
                 return true;
             }
         }
 
-        // 3) No valid rotation position found → keep the brick as it is.
+        // No valid rotation position was found.
         return false;
     }
 
     /**
+     * Returns true if placing the given shape at offsetX keeps all non-empty cells
+     * inside the horizontal board bounds [0, columns - 1].
+     */
+    private boolean isWithinHorizontalBounds(int[][] shape, int offsetX) {
+        int minLocalX = Integer.MAX_VALUE;
+        int maxLocalX = Integer.MIN_VALUE;
+
+        for (int row = 0; row < shape.length; row++) {
+            for (int col = 0; col < shape[row].length; col++) {
+                if (shape[row][col] != 0) {
+                    if (col < minLocalX) {
+                        minLocalX = col;
+                    }
+                    if (col > maxLocalX) {
+                        maxLocalX = col;
+                    }
+                }
+            }
+        }
+
+        // Empty shape (should not happen), treat as in bounds.
+        if (minLocalX == Integer.MAX_VALUE) {
+            return true;
+        }
+
+        int left = offsetX + minLocalX;
+        int right = offsetX + maxLocalX;
+
+        return left >= 0 && right < columns;
+    }
+
+    /**
      * Create a new brick at the spawn position.
+     *
      * @return true if the new brick immediately collides with existing blocks
      */
     @Override
@@ -150,6 +218,7 @@ public class SimpleBoard implements Board {
 
     /**
      * Spawn the next brick from the generator and position it at the spawn point.
+     *
      * @return true if the new brick immediately collides with existing blocks
      */
     private boolean spawnNewBrickFromGenerator() {
@@ -261,7 +330,9 @@ public class SimpleBoard implements Board {
         return queue;
     }
 
-    /** Merge the falling brick into the background matrix. */
+    /**
+     * Merge the falling brick into the background matrix.
+     */
     @Override
     public void mergeBrickToBackground() {
         boardMatrix = MatrixOperations.merge(
@@ -274,7 +345,9 @@ public class SimpleBoard implements Board {
         hasHeldThisTurn = false;
     }
 
-    /** Check and clear full rows, update matrix safely. */
+    /**
+     * Check and clear full rows, update matrix safely.
+     */
     @Override
     public ClearRow clearRows() {
         ClearRow result = MatrixOperations.checkRemoving(boardMatrix);
@@ -320,7 +393,9 @@ public class SimpleBoard implements Board {
         return score;
     }
 
-    /** Reset board, score, and spawn a new brick. */
+    /**
+     * Reset board, score, and spawn a new brick.
+     */
     @Override
     public void newGame() {
         boardMatrix = new int[rows][columns];

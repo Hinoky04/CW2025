@@ -12,63 +12,66 @@
     -fx-background-color: linear-gradient(to bottom, #16181f, #05070b);
     -fx-background-radius: 26;
     -fx-border-radius: 30;
-    -fx-border-width: 5;
-    -fx-border-color: linear-gradient(to bottom, #d0d0d0, #4b4b4b);
+    -fx-border-width: 4; /* unified with side frames */
+    -fx-border-color: linear-gradient(to bottom, #f0f0f0, #4b4b4b);
     -fx-padding: 18;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.75), 24, 0.4, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.80), 24, 0.45, 0, 4);
 }
 
 /* Red glow when near top */
 .dangerBoard {
-    -fx-border-color: linear-gradient(to bottom, #ff8080, #ff0000);
-    -fx-effect: dropshadow(gaussian, rgba(255,0,0,0.7), 30, 0.6, 0, 0);
+    -fx-border-color: linear-gradient(to bottom, #ffb3b3, #ff0000);
+    -fx-effect: dropshadow(gaussian, rgba(255,0,0,0.8), 30, 0.7, 0, 0);
 }
 
-/* === INNER PANELS FOR HOLD / NEXT / SCORE === */
+/* === OUTER SILVER SHELLS: HOLD / SCORE / NEXT ===
+   Exactly the same style for all side panels. */
+.panel-frame-square {
+    -fx-background-color: linear-gradient(to bottom, #f8f8fb, #c7c8cf);
+    -fx-background-radius: 22;
+    -fx-border-radius: 26;
+    -fx-border-width: 4;
+    -fx-border-color: linear-gradient(to bottom, #ffffff, #d4d4dc);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.75), 16, 0.45, 0, 3);
+}
 
-/* Dark inner area where the piece squares are drawn */
-.nextBrick {
-    -fx-background-color: rgba(0, 0, 0, 0.85);
+/* SCORE panel outer variant – slightly brighter */
+.score-panel {
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #d6d6de);
+}
+
+/* DARK INNER FRAME – the black "screen" inside each silver shell */
+.score-inner-frame {
+    -fx-background-color: linear-gradient(to bottom, #252525, #050505);
     -fx-background-radius: 16;
     -fx-border-radius: 16;
     -fx-border-width: 2;
-    -fx-border-color: rgba(255,255,255,0.35);
+    -fx-border-color: rgba(255,255,255,0.18);
 }
 
-/* Label for HOLD / NEXT */
-.nextBrickLabel {
+/* The black slots where the numbers sit */
+.score-slot {
+    -fx-background-color: rgba(0,0,0,0.92);
+    -fx-background-radius: 12;
+    -fx-padding: 4 12 4 12;
+}
+
+/* Dark inner area where the NEXT / HOLD piece squares are drawn */
+.nextBrick {
+    -fx-background-color: rgba(0, 0, 0, 0.92);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-width: 1.5;
+    -fx-border-color: rgba(255,255,255,0.20);
+}
+
+/* Section titles: SCORE / LEVEL / LINES / COMBO / HOLD / NEXT */
+.score-section-title {
     -fx-font-family: "Let's go Digital";
-    -fx-font-size: 16px;
+    -fx-font-size: 17px;
     -fx-text-fill: #ffffff;
-    -fx-padding: 0 0 6 0;
-}
-
-/* Square silver frame – used by HOLD and SCORE panel.
-   Size is controlled by content (80x80 GridPane + padding),
-   so it will match the NEXT single panel. */
-.panel-frame-square {
-    -fx-background-color: rgba(0,0,0,0.80);
-    -fx-background-radius: 22;
-    -fx-border-radius: 24;
-    -fx-border-width: 3;
-    -fx-border-color: linear-gradient(to bottom, #f5f5f5, #707070);
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 18, 0.4, 0, 3);
-}
-
-/* Score panel variant – darker so numbers are clear */
-.score-panel {
-    -fx-background-color: rgba(0,0,0,0.85);
-}
-
-
-/* Tall frame that holds the 3 NEXT previews */
-.next-column-frame {
-    -fx-background-color: rgba(0,0,0,0.80);
-    -fx-background-radius: 26;
-    -fx-border-radius: 28;
-    -fx-border-width: 3;
-    -fx-border-color: rgba(255,255,255,0.40);
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.85), 20, 0.45, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.9), 4, 0.6, 0, 1);
+    -fx-padding: 0 0 2 0;
 }
 
 /* === HUD TEXT (score / level / lines / combo etc.) === */
@@ -79,23 +82,18 @@
     -fx-border-radius: 14;
 }
 
+/* Base style for digital numbers / texts */
 .hud-value {
     -fx-font-family: "Let's go Digital";
-    -fx-font-size: 22px;      /* bigger numbers */
+    -fx-font-size: 22px;
     -fx-fill: #ffffff;
     -fx-text-fill: #ffffff;
 }
 
-.hud-title {
-    -fx-font-size: 22px;
-    -fx-font-weight: bold;
-}
-
-.hud-subtitle {
-    -fx-font-size: 14px;
-    -fx-font-weight: bold;
-    -fx-fill: #ffd76a;
-    -fx-text-fill: #ffd76a;
+/* Bigger digits inside the score slots */
+.score-digit {
+    -fx-font-size: 26px;
+    -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 8, 0.5, 0, 0);
 }
 
 /* Danger text */
