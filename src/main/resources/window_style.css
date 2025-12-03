@@ -12,7 +12,7 @@
     -fx-background-color: linear-gradient(to bottom, #16181f, #05070b);
     -fx-background-radius: 26;
     -fx-border-radius: 30;
-    -fx-border-width: 4; /* unified with side frames */
+    -fx-border-width: 4;
     -fx-border-color: linear-gradient(to bottom, #f0f0f0, #4b4b4b);
     -fx-padding: 18;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.80), 24, 0.45, 0, 4);
@@ -24,18 +24,21 @@
     -fx-effect: dropshadow(gaussian, rgba(255,0,0,0.8), 30, 0.7, 0, 0);
 }
 
-/* === OUTER SILVER SHELLS: HOLD / SCORE / NEXT ===
-   Exactly the same style for all side panels. */
+/* === OUTER SHELLS: HOLD / SCORE / NEXT ===
+   Silver pod with a clear white/grey border, similar to the main board. */
 .panel-frame-square {
     -fx-background-color: linear-gradient(to bottom, #f8f8fb, #c7c8cf);
     -fx-background-radius: 22;
     -fx-border-radius: 26;
+
+    /* medium-thick border */
     -fx-border-width: 4;
-    -fx-border-color: linear-gradient(to bottom, #ffffff, #d4d4dc);
+    -fx-border-color: linear-gradient(to bottom, #f0f0f0, #4b4b4b);
+
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.75), 16, 0.45, 0, 3);
 }
 
-/* SCORE panel outer variant – slightly brighter */
+/* SCORE panel outer variant – slightly brighter shell */
 .score-panel {
     -fx-background-color: linear-gradient(to bottom, #ffffff, #d6d6de);
 }
@@ -45,8 +48,10 @@
     -fx-background-color: linear-gradient(to bottom, #252525, #050505);
     -fx-background-radius: 16;
     -fx-border-radius: 16;
+
+    /* inner white outline */
     -fx-border-width: 2;
-    -fx-border-color: rgba(255,255,255,0.18);
+    -fx-border-color: rgba(255,255,255,0.45);
 }
 
 /* The black slots where the numbers sit */
@@ -54,6 +59,11 @@
     -fx-background-color: rgba(0,0,0,0.92);
     -fx-background-radius: 12;
     -fx-padding: 4 12 4 12;
+
+    /* subtle thin border */
+    -fx-border-color: rgba(255,255,255,0.35);
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
 }
 
 /* Dark inner area where the NEXT / HOLD piece squares are drawn */
@@ -61,8 +71,10 @@
     -fx-background-color: rgba(0, 0, 0, 0.92);
     -fx-background-radius: 14;
     -fx-border-radius: 14;
-    -fx-border-width: 1.5;
-    -fx-border-color: rgba(255,255,255,0.20);
+
+    /* clear border around the preview window */
+    -fx-border-width: 2;
+    -fx-border-color: rgba(255,255,255,0.65);
 }
 
 /* Section titles: SCORE / LEVEL / LINES / COMBO / HOLD / NEXT */

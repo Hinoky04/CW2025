@@ -39,7 +39,7 @@ public class GuiController implements Initializable {
     private static final int NEXT_BRICK_SIZE = 24;
 
     // Number of hidden rows at the top of the board (spawn area).
-    private static final int HIDDEN_TOP_ROWS = 2;
+    private static final int HIDDEN_TOP_ROWS = 3;
 
     // === Configurable values (defaults tuned roughly for Classic mode) ===
 
@@ -54,6 +54,13 @@ public class GuiController implements Initializable {
 
     // How much to dim landed blocks in the background (1.0 = normal brightness).
     private double backgroundDimFactor = 1.0;
+
+    // Optional extra nudge (keep at 0 for now)
+    private static final int PREVIEW_OFFSET_ROW = 0;
+    private static final int PREVIEW_OFFSET_COL = 0;
+
+
+
 
     @FXML
     private GridPane gamePanel;          // main board grid
@@ -493,6 +500,7 @@ public class GuiController implements Initializable {
         }
         panel.getChildren().clear();
 
+        // 没有数据就不用画
         if (data == null || data.length == 0 || data[0].length == 0) {
             return null;
         }
@@ -500,7 +508,7 @@ public class GuiController implements Initializable {
         int rows = data.length;
         int cols = data[0].length;
 
-        // Find the bounding box of non-zero cells
+        // 找出非 0 方块的包围盒
         int minRow = rows, maxRow = -1, minCol = cols, maxCol = -1;
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
@@ -513,17 +521,19 @@ public class GuiController implements Initializable {
             }
         }
 
+        // 全是 0，直接返回
         if (maxRow == -1) {
-            // all zero
             return null;
         }
 
         int shapeRows = maxRow - minRow + 1;
         int shapeCols = maxCol - minCol + 1;
 
+        // 目标预览区是固定 4x4
         final int targetRows = 4;
         final int targetCols = 4;
 
+        // 行列都做「整数居中」
         int offsetRow = (targetRows - shapeRows) / 2;
         int offsetCol = (targetCols - shapeCols) / 2;
 
@@ -535,19 +545,24 @@ public class GuiController implements Initializable {
                 if (value == 0) {
                     continue;
                 }
+
                 Rectangle cell = new Rectangle(NEXT_BRICK_SIZE, NEXT_BRICK_SIZE);
                 cell.setFill(getFillColor(value));
 
                 int gridRow = offsetRow + r;
                 int gridCol = offsetCol + c;
 
-                rects[gridRow][gridCol] = cell;
-                panel.add(cell, gridCol, gridRow);
+                if (gridRow >= 0 && gridRow < targetRows
+                        && gridCol >= 0 && gridCol < targetCols) {
+                    rects[gridRow][gridCol] = cell;
+                    panel.add(cell, gridCol, gridRow);
+                }
             }
         }
 
         return rects;
     }
+
 
     private void clearNextPanels() {
         if (nextBrickPanelTop != null) {

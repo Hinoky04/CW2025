@@ -42,7 +42,7 @@
                         <VBox GridPane.columnIndex="0"
                               GridPane.rowIndex="0"
                               alignment="TOP_CENTER"
-                              spacing="14.0"
+                              spacing="30.0"
                               maxHeight="Infinity"
                               fillWidth="false">
                             <children>
@@ -63,14 +63,23 @@
                                                         <Label text="HOLD (C)"
                                                                styleClass="score-section-title"/>
 
-                                                        <!-- Center the preview window (bigger square) -->
+                                                        <!-- Hold: one black window with centered brick -->
                                                         <StackPane alignment="CENTER">
-                                                            <GridPane fx:id="holdBrickPanel"
-                                                                      hgap="1" vgap="1"
-                                                                      prefWidth="96.0" prefHeight="96.0"
-                                                                      maxWidth="-Infinity"
-                                                                      maxHeight="-Infinity"
-                                                                      styleClass="nextBrick"/>
+                                                            <StackPane alignment="CENTER"
+                                                                       prefWidth="120.0"
+                                                                       prefHeight="80.0"
+                                                                       styleClass="nextBrick">
+                                                                <children>
+                                                                    <VBox alignment="CENTER"
+                                                                          fillWidth="false">
+                                                                        <children>
+                                                                            <!-- Grid that draws the hold piece -->
+                                                                            <GridPane fx:id="holdBrickPanel"
+                                                                                      hgap="1" vgap="1"/>
+                                                                        </children>
+                                                                    </VBox>
+                                                                </children>
+                                                            </StackPane>
                                                         </StackPane>
                                                     </children>
                                                 </VBox>
@@ -163,7 +172,7 @@
                                     </center>
                                 </BorderPane>
 
-                                <!-- Falling brick (overlay). brickPanel is unmanaged in controller -->
+                                <!-- Falling brick (overlay). brickPanel is positioned from controller -->
                                 <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
 
                                 <!-- Notifications + GameOverPanel -->
@@ -228,39 +237,37 @@
                                                         <Label text="NEXT"
                                                                styleClass="score-section-title"/>
 
-                                                        <!-- three next previews, each centered -->
-                                                        <VBox alignment="CENTER" spacing="10.0">
-                                                            <children>
+                                                        <!-- ONE tall black window, 3 previews inside -->
+                                                        <StackPane alignment="CENTER">
+                                                            <StackPane alignment="CENTER"
+                                                                       prefWidth="136.0"
+                                                                       prefHeight="220.0"
+                                                                       styleClass="nextBrick">
+                                                                <padding>
+                                                                    <Insets top="8.0" right="8.0" bottom="8.0" left="8.0"/>
+                                                                </padding>
+                                                                <children>
+                                                                    <!-- Vertical stack for 3 mini-bricks -->
+                                                                    <VBox alignment="CENTER"
+                                                                          spacing="30.0"
+                                                                          fillWidth="false">
+                                                                        <children>
+                                                                            <!-- Top preview -->
+                                                                            <GridPane fx:id="nextBrickPanelTop"
+                                                                                      hgap="1" vgap="1"/>
 
-                                                                <StackPane alignment="CENTER">
-                                                                    <GridPane fx:id="nextBrickPanelTop"
-                                                                              hgap="1" vgap="1"
-                                                                              prefWidth="96.0" prefHeight="96.0"
-                                                                              maxWidth="-Infinity"
-                                                                              maxHeight="-Infinity"
-                                                                              styleClass="nextBrick"/>
-                                                                </StackPane>
+                                                                            <!-- Middle preview -->
+                                                                            <GridPane fx:id="nextBrickPanelMid"
+                                                                                      hgap="1" vgap="1"/>
 
-                                                                <StackPane alignment="CENTER">
-                                                                    <GridPane fx:id="nextBrickPanelMid"
-                                                                              hgap="1" vgap="1"
-                                                                              prefWidth="96.0" prefHeight="96.0"
-                                                                              maxWidth="-Infinity"
-                                                                              maxHeight="-Infinity"
-                                                                              styleClass="nextBrick"/>
-                                                                </StackPane>
-
-                                                                <StackPane alignment="CENTER">
-                                                                    <GridPane fx:id="nextBrickPanelBottom"
-                                                                              hgap="1" vgap="1"
-                                                                              prefWidth="96.0" prefHeight="96.0"
-                                                                              maxWidth="-Infinity"
-                                                                              maxHeight="-Infinity"
-                                                                              styleClass="nextBrick"/>
-                                                                </StackPane>
-
-                                                            </children>
-                                                        </VBox>
+                                                                            <!-- Bottom preview -->
+                                                                            <GridPane fx:id="nextBrickPanelBottom"
+                                                                                      hgap="1" vgap="1"/>
+                                                                        </children>
+                                                                    </VBox>
+                                                                </children>
+                                                            </StackPane>
+                                                        </StackPane>
 
                                                     </children>
                                                 </VBox>
