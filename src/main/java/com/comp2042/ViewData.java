@@ -6,21 +6,21 @@ public final class ViewData {
     private final int xPosition;
     private final int yPosition;
 
-    /**
-     * First upcoming brick (kept for backwards compatibility).
-     */
+    /** First upcoming brick (kept for backwards compatibility). */
     private final int[][] nextBrickData;
 
-    /**
-     * Queue of upcoming bricks for preview (index 0 is the next brick).
-     * May be null if not provided by the board.
-     */
+    /** Queue of upcoming bricks for preview (index 0 is the next brick). May be null. */
     private final int[][][] nextQueue;
 
-    /**
-     * Held brick data, or null if no brick is held.
-     */
+    /** Held brick data, or null if no brick is held. */
     private final int[][] holdBrickData;
+
+    /**
+     * Ghost landing position for the current brick.
+     * If the board does not provide a ghost, these may simply match (xPosition, yPosition).
+     */
+    private final int ghostXPosition;
+    private final int ghostYPosition;
 
     /**
      * Existing constructor – no hold brick, no queue.
@@ -29,7 +29,7 @@ public final class ViewData {
                     int xPosition,
                     int yPosition,
                     int[][] nextBrickData) {
-        this(brickData, xPosition, yPosition, nextBrickData, null, null);
+        this(brickData, xPosition, yPosition, nextBrickData, null, null, xPosition, yPosition);
     }
 
     /**
@@ -40,7 +40,7 @@ public final class ViewData {
                     int yPosition,
                     int[][] nextBrickData,
                     int[][] holdBrickData) {
-        this(brickData, xPosition, yPosition, nextBrickData, null, holdBrickData);
+        this(brickData, xPosition, yPosition, nextBrickData, null, holdBrickData, xPosition, yPosition);
     }
 
     /**
@@ -58,13 +58,17 @@ public final class ViewData {
                     int yPosition,
                     int[][] nextBrickData,
                     int[][][] nextQueue,
-                    int[][] holdBrickData) {
+                    int[][] holdBrickData,
+                    int ghostXPosition,
+                    int ghostYPosition) {
         this.brickData = brickData;
         this.xPosition = xPosition;
         this.yPosition = yPosition;
         this.nextBrickData = nextBrickData;
         this.nextQueue = nextQueue;
         this.holdBrickData = holdBrickData;
+        this.ghostXPosition = ghostXPosition;
+        this.ghostYPosition = ghostYPosition;
     }
 
     public int[][] getBrickData() {
@@ -109,5 +113,15 @@ public final class ViewData {
             return null;
         }
         return MatrixOperations.copy(holdBrickData);
+    }
+
+    /** X position where the current brick would finally land if hard-dropped. */
+    public int getGhostXPosition() {
+        return ghostXPosition;
+    }
+
+    /** Y position where the current brick would finally land if hard-dropped. */
+    public int getGhostYPosition() {
+        return ghostYPosition;
     }
 }

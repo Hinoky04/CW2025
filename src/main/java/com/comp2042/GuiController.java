@@ -52,15 +52,12 @@ public class GuiController implements Initializable {
     // How many top visible rows are considered "danger zone".
     private int dangerVisibleRows = 3;
 
-    // How much to dim landed blocks in the background (1.0 = normal brightness).
+    // How much to dim blocks in the background (1.0 = normal brightness).
     private double backgroundDimFactor = 1.0;
 
-    // Optional extra nudge (keep at 0 for now)
+    // Optional extra nudge for previews (keep at 0 unless you want to tweak)
     private static final int PREVIEW_OFFSET_ROW = 0;
     private static final int PREVIEW_OFFSET_COL = 0;
-
-
-
 
     @FXML
     private GridPane gamePanel;          // main board grid
@@ -95,7 +92,7 @@ public class GuiController implements Initializable {
     private Text modeText;               // shows current mode in the HUD
 
     @FXML
-    private Text modeHintText;           // per-mode hint line in the HUD
+    private Text modeHintText;           // per-mode hint line (you可以保留逻辑，FXML不一定显示)
 
     @FXML
     private Text scoreText;              // shows current score in the HUD
@@ -107,13 +104,13 @@ public class GuiController implements Initializable {
     private Text linesText;              // shows total cleared lines in the HUD
 
     @FXML
-    private Text timerText;              // shows elapsed time in the HUD
+    private Text timerText;              // shows elapsed time in the HUD (右下 INFO panel)
 
     @FXML
     private Text progressText;           // generic progress line (Rush / Survival, etc.)
 
     @FXML
-    private Text bestText;               // best score / time info
+    private Text bestText;               // best score / time info (右下 INFO panel)
 
     @FXML
     private Text comboText;              // shows current combo multiplier
@@ -193,6 +190,12 @@ public class GuiController implements Initializable {
     private double boardOriginY;
     private double boardCellWidth;
     private double boardCellHeight;
+
+    // === GHOST PIECE SUPPORT (landing shadow driven by ViewData from the board) ===
+    /** Last ViewData snapshot describing the current falling brick. */
+    private ViewData lastViewData;
+    /** Visual layer that renders the landing shadow between background and active brick. */
+    private Group ghostGroup;
 
     /**
      * Called from Main.showGameScene() so this controller can access
@@ -276,7 +279,7 @@ public class GuiController implements Initializable {
         gamePanel.requestFocus();
         gamePanel.setOnKeyPressed(this::handleKeyPressed);
 
-        // Snap everything to pixel boundaries to avoid blurry edges.
+        // Snap to pixel to reduce blur.
         gamePanel.setSnapToPixel(true);
         if (gameBoard != null) {
             gameBoard.setSnapToPixel(true);
@@ -286,8 +289,21 @@ public class GuiController implements Initializable {
         if (brickPanel != null) {
             brickPanel.setVisible(false);          // hidden until layout is calibrated
             brickPanel.setManaged(false);          // excluded from parent layout
-            brickPanel.setMouseTransparent(true);  // clicks go to underlying nodes
+            brickPanel.setMouseTransparent(true);  // clicks go through
             brickPanel.setSnapToPixel(true);
+        }
+
+        // === Ghost layer: inserted between the board background and active brick overlay ===
+        if (brickPanel != null && brickPanel.getParent() instanceof Pane parent) {
+            ghostGroup = new Group();
+            ghostGroup.setMouseTransparent(true);
+            // Render the ghost directly underneath the active-brick grid.
+            int idx = parent.getChildren().indexOf(brickPanel);
+            if (idx < 0) {
+                parent.getChildren().add(ghostGroup);
+            } else {
+                parent.getChildren().add(idx, ghostGroup);
+            }
         }
 
         // Wire game-over panel buttons to restart / main menu.
@@ -322,7 +338,6 @@ public class GuiController implements Initializable {
         if (bestText != null) {
             bestText.setText("Best Score 0");
         }
-        // modeHintText is set once GameController selects the mode.
     }
 
     /**
@@ -383,9 +398,28 @@ public class GuiController implements Initializable {
             event.consume();
         }
 
+        // Soft drop
         if (code == KeyCode.DOWN || code == KeyCode.S) {
             moveDown(new MoveEvent(EventType.DOWN, EventSource.THREAD));
             SoundManager.playMove();
+            event.consume();
+        }
+
+        // 如果你已经实现了 HARD_DROP，在这里加 SPACE 调用 onHardDropEvent
+        if (code == KeyCode.SPACE) {
+            DownData downData = eventListener.onHardDropEvent(
+                    new MoveEvent(EventType.HARD_DROP, EventSource.USER));
+            if (downData.getClearRow() != null &&
+                    downData.getClearRow().getLinesRemoved() > 0) {
+
+                String bonusText = "+" + downData.getClearRow().getScoreBonus();
+                NotificationPanel notificationPanel = new NotificationPanel(bonusText);
+                groupNotification.getChildren().add(notificationPanel);
+                notificationPanel.showScore(groupNotification.getChildren());
+
+                SoundManager.playLineClear();
+            }
+            refreshBrick(downData.getViewData());
             event.consume();
         }
     }
@@ -418,12 +452,14 @@ public class GuiController implements Initializable {
         initNextBrick(brick);
         initHoldBrick(brick);
 
-        // We will recompute origin & cell size once, after JavaFX finishes first layout.
+        lastViewData = brick;
         boardLayoutCalibrated = false;
 
         Platform.runLater(() -> {
             calibrateBoardLayout();
             updateBrickPanelPosition(brick);
+            // Draw initial ghost at the spawn position.
+            refreshGhostOverlay();
         });
 
         startAutoDropTimer();
@@ -431,16 +467,33 @@ public class GuiController implements Initializable {
         MusicPlayer.startBackgroundMusic();
     }
 
+    private int[][] copyBoardMatrix(int[][] src) {
+        if (src == null || src.length == 0) {
+            return null;
+        }
+        int[][] copy = new int[src.length][src[0].length];
+        for (int i = 0; i < src.length; i++) {
+            System.arraycopy(src[i], 0, copy[i], 0, src[i].length);
+        }
+        return copy;
+    }
+
+    /**
+     * Initialise background cells: from the very beginning, use the final
+     * rendering style (no "blur then become solid" jump).
+     */
     private void initBackgroundCells(int[][] boardMatrix) {
         displayMatrix = new Rectangle[boardMatrix.length][boardMatrix[0].length];
+
         for (int row = HIDDEN_TOP_ROWS; row < boardMatrix.length; row++) {
             for (int col = 0; col < boardMatrix[row].length; col++) {
                 Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
 
-                // Transparent fill so the background image shows through,
-                // but with a subtle grey stroke to make the grid obvious.
-                cell.setFill(Color.TRANSPARENT);
-                cell.setStroke(Color.rgb(55, 55, 55));   // grid line colour
+                // Use the same rendering path as runtime refresh:
+                setBackgroundRectangleData(boardMatrix[row][col], cell);
+
+                // Grey grid line on top of the fill.
+                cell.setStroke(Color.rgb(55, 55, 55));
                 cell.setStrokeWidth(0.7);
 
                 displayMatrix[row][col] = cell;
@@ -455,12 +508,11 @@ public class GuiController implements Initializable {
         for (int row = 0; row < brickData.length; row++) {
             for (int col = 0; col < brickData[row].length; col++) {
                 Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
-                cell.setFill(getFillColor(brickData[row][col]));
+                setRectangleData(brickData[row][col], cell);
                 rectangles[row][col] = cell;
                 brickPanel.add(cell, col, row);
             }
         }
-        // Position will be set after layout calibration.
     }
 
     // === NEXT (3-queue) initialisation & refresh ===
@@ -500,7 +552,6 @@ public class GuiController implements Initializable {
         }
         panel.getChildren().clear();
 
-        // 没有数据就不用画
         if (data == null || data.length == 0 || data[0].length == 0) {
             return null;
         }
@@ -508,7 +559,7 @@ public class GuiController implements Initializable {
         int rows = data.length;
         int cols = data[0].length;
 
-        // 找出非 0 方块的包围盒
+        // bounding box of non-zero cells
         int minRow = rows, maxRow = -1, minCol = cols, maxCol = -1;
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
@@ -521,7 +572,6 @@ public class GuiController implements Initializable {
             }
         }
 
-        // 全是 0，直接返回
         if (maxRow == -1) {
             return null;
         }
@@ -529,13 +579,11 @@ public class GuiController implements Initializable {
         int shapeRows = maxRow - minRow + 1;
         int shapeCols = maxCol - minCol + 1;
 
-        // 目标预览区是固定 4x4
         final int targetRows = 4;
         final int targetCols = 4;
 
-        // 行列都做「整数居中」
-        int offsetRow = (targetRows - shapeRows) / 2;
-        int offsetCol = (targetCols - shapeCols) / 2;
+        int offsetRow = (targetRows - shapeRows) / 2 + PREVIEW_OFFSET_ROW;
+        int offsetCol = (targetCols - shapeCols) / 2 + PREVIEW_OFFSET_COL;
 
         Rectangle[][] rects = new Rectangle[targetRows][targetCols];
 
@@ -547,7 +595,7 @@ public class GuiController implements Initializable {
                 }
 
                 Rectangle cell = new Rectangle(NEXT_BRICK_SIZE, NEXT_BRICK_SIZE);
-                cell.setFill(getFillColor(value));
+                setRectangleData(value, cell);
 
                 int gridRow = offsetRow + r;
                 int gridCol = offsetCol + c;
@@ -562,7 +610,6 @@ public class GuiController implements Initializable {
 
         return rects;
     }
-
 
     private void clearNextPanels() {
         if (nextBrickPanelTop != null) {
@@ -741,8 +788,7 @@ public class GuiController implements Initializable {
 
     /**
      * Moves the brickPanel so that the falling piece lines up exactly with
-     * the background grid inside gamePanel. Uses the pre-computed origin and
-     * cell size so there is no shaking when lines clear or pieces land.
+     * the background grid inside gamePanel.
      */
     private void updateBrickPanelPosition(ViewData brick) {
         if (!boardLayoutCalibrated || brickPanel == null || brick == null) {
@@ -752,10 +798,11 @@ public class GuiController implements Initializable {
         double x = boardOriginX + brick.getxPosition() * boardCellWidth;
         double y = boardOriginY + (brick.getyPosition() - HIDDEN_TOP_ROWS) * boardCellHeight;
 
-        // Rounding avoids half-pixel blurriness
         brickPanel.setLayoutX(Math.round(x));
         brickPanel.setLayoutY(Math.round(y));
     }
+
+    // === Colour logic: active brick, background bricks and ghost ===
 
     private Paint getFillColor(int value) {
         switch (value) {
@@ -806,21 +853,52 @@ public class GuiController implements Initializable {
         return value;
     }
 
-    private Paint getBackgroundFillColor(int value) {
-        Paint base = getFillColor(value);
-
+    /** Colour for the currently falling brick (always full brightness). */
+    private Paint getActiveBrickFillColor(int value) {
         if (value == 0) {
-            return base;
+            return Color.TRANSPARENT;
+        }
+        return getFillColor(value);
+    }
+
+    /**
+     * Colour for settled blocks in the background.
+     *
+     * Classic / Survival / Rush-40: landed blocks are drawn with normal colours.
+     * Hyper: landed blocks are fully transparent; they still exist in the matrix for
+     * collision / line clear, but visually "merge into" the empty background.
+     */
+    private Paint getBackgroundFillColor(int value) {
+        if (value == 0) {
+            return Color.TRANSPARENT;
         }
 
-        if (currentMode == GameMode.HYPER && backgroundDimFactor < 1.0) {
-            return applyDimFactor(base, backgroundDimFactor);
+        Paint base = getFillColor(value);
+
+        if (currentMode == GameMode.HYPER) {
+            return Color.TRANSPARENT;
         }
         return base;
     }
 
+    /** Draw a single cell of the active falling layer (no background). */
+    private void setRectangleData(int colorCode, Rectangle rectangle) {
+        rectangle.setFill(getActiveBrickFillColor(colorCode));
+        rectangle.setArcHeight(9);
+        rectangle.setArcWidth(9);
+    }
+
+    /** Draw a single cell of the background matrix. */
+    private void setBackgroundRectangleData(int colorCode, Rectangle rectangle) {
+        rectangle.setFill(getBackgroundFillColor(colorCode));
+        rectangle.setArcHeight(9);
+        rectangle.setArcWidth(9);
+    }
+
     private void refreshBrick(ViewData brick) {
         if (gameState == GameState.PLAYING) {
+            lastViewData = brick;
+
             updateBrickPanelPosition(brick);
 
             int[][] brickData = brick.getBrickData();
@@ -832,6 +910,7 @@ public class GuiController implements Initializable {
 
             refreshNextBrick(brick);
             refreshHoldBrick(brick);
+            refreshGhostOverlay();
         }
     }
 
@@ -842,18 +921,9 @@ public class GuiController implements Initializable {
             }
         }
         updateDangerFromBoard(board);
-    }
 
-    private void setRectangleData(int colorCode, Rectangle rectangle) {
-        rectangle.setFill(getFillColor(colorCode));
-        rectangle.setArcHeight(9);
-        rectangle.setArcWidth(9);
-    }
-
-    private void setBackgroundRectangleData(int colorCode, Rectangle rectangle) {
-        rectangle.setFill(getBackgroundFillColor(colorCode));
-        rectangle.setArcHeight(9);
-        rectangle.setArcWidth(9);
+        // After the background changes we must recompute and redraw the landing shadow.
+        refreshGhostOverlay();
     }
 
     private void moveDown(MoveEvent event) {
@@ -946,6 +1016,10 @@ public class GuiController implements Initializable {
 
         if (brickPanel != null) {
             brickPanel.getChildren().clear();
+        }
+
+        if (ghostGroup != null) {
+            ghostGroup.getChildren().clear();
         }
 
         SoundManager.playGameOver();
@@ -1148,7 +1222,9 @@ public class GuiController implements Initializable {
         refreshBestInfoForMode(mode, false, false);
     }
 
-    private void refreshBestInfoForMode(GameMode mode, boolean highlightNewScore, boolean highlightNewTime) {
+    private void refreshBestInfoForMode(GameMode mode,
+                                        boolean highlightNewScore,
+                                        boolean highlightNewTime) {
         if (bestText == null || mode == null) {
             return;
         }
@@ -1158,23 +1234,22 @@ public class GuiController implements Initializable {
 
         if (mode == GameMode.RUSH_40) {
             double bestTime = bestRushTimes[index];
-            String timePart;
+
+            StringBuilder text = new StringBuilder();
             if (bestTime > 0.0) {
                 long totalSeconds = (long) bestTime;
                 long minutes = totalSeconds / 60;
                 long seconds = totalSeconds % 60;
-                timePart = String.format("%02d:%02d", minutes, seconds);
+                text.append("Best Time ")
+                    .append(String.format("%02d:%02d", minutes, seconds));
             } else {
-                timePart = "--:--";
+                text.append("Best Time --:--");
             }
 
-            StringBuilder text = new StringBuilder();
-            text.append("Best Score ").append(bestScore);
-            text.append(", Time ").append(timePart);
-
-            if (highlightNewScore || highlightNewTime) {
+            if (highlightNewTime) {
                 text.append(" (New!)");
             }
+
             bestText.setText(text.toString());
         } else {
             StringBuilder text = new StringBuilder();
@@ -1223,4 +1298,77 @@ public class GuiController implements Initializable {
         // Then run the normal game-over flow (stop timers, show overlay).
         gameOver();
     }
+
+    // === GHOST / LANDING SHADOW RENDERING (driven by ghost position from ViewData) ===
+
+    /**
+     * Recalculates and draws the landing shadow based on the ghost position
+     * provided by the board in {@link ViewData}.
+     *
+     * This method only affects visuals; the underlying board state is not changed.
+     */
+    private void refreshGhostOverlay() {
+        if (ghostGroup == null) {
+            return;
+        }
+        ghostGroup.getChildren().clear();
+
+        if (!boardLayoutCalibrated || lastViewData == null || displayMatrix == null) {
+            return;
+        }
+
+        int rows = displayMatrix.length;
+        if (rows == 0 || displayMatrix[0] == null) {
+            return;
+        }
+        int cols = displayMatrix[0].length;
+
+        int[][] shape = lastViewData.getBrickData();
+        if (shape == null || shape.length == 0 || shape[0].length == 0) {
+            return;
+        }
+
+        int ghostX = lastViewData.getGhostXPosition();
+        int ghostY = lastViewData.getGhostYPosition();
+
+        // Convert board coordinates back into pixel coordinates and draw the ghost.
+        for (int r = 0; r < shape.length; r++) {
+            for (int c = 0; c < shape[r].length; c++) {
+                if (shape[r][c] == 0) {
+                    continue;
+                }
+
+                int boardRow = ghostY + r;
+                int boardCol = ghostX + c;
+
+                if (boardCol < 0 || boardCol >= cols || boardRow >= rows) {
+                    continue;
+                }
+
+                // Skip hidden spawn rows so the landing shadow only appears in the visible area.
+                if (boardRow < HIDDEN_TOP_ROWS) {
+                    continue;
+                }
+
+                double x = boardOriginX + boardCol * boardCellWidth;
+                double y = boardOriginY + (boardRow - HIDDEN_TOP_ROWS) * boardCellHeight;
+
+                Rectangle ghostRect = new Rectangle(
+                        Math.max(1.0, boardCellWidth - 1.0),
+                        Math.max(1.0, boardCellHeight - 1.0)
+                );
+                ghostRect.setLayoutX(Math.round(x));
+                ghostRect.setLayoutY(Math.round(y));
+                // Soft white shadow so the ghost is visible but not distracting.
+                ghostRect.setFill(new Color(1.0, 1.0, 1.0, 0.22));
+                ghostRect.setArcWidth(9);
+                ghostRect.setArcHeight(9);
+
+                ghostGroup.getChildren().add(ghostRect);
+            }
+        }
+    }
+
+    // Helper methods for ghost landing are now provided by the board via ViewData,
+    // so no GUI-side collision helpers are required here.
 }

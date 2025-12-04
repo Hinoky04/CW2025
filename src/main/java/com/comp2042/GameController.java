@@ -128,6 +128,8 @@ public class GameController implements InputEventListener {
         guiController.clearProgressText();
     }
 
+    // ========================= INPUT HANDLERS =========================
+
     @Override
     public DownData onDownEvent(MoveEvent event) {
         boolean moved = board.moveBrickDown();
@@ -136,11 +138,62 @@ public class GameController implements InputEventListener {
         if (!moved) {
             clearRow = handleBrickLanded();
         } else if (event.getEventSource() == EventSource.USER) {
+            // Soft drop bonus per cell (only when user presses DOWN).
             board.getScore().add(1);
         }
 
         return new DownData(clearRow, board.getViewData());
     }
+
+    /**
+     * Hard drop: move the current brick straight down until it lands,
+     * then run the same landing / line-clear logic once.
+     */
+    @Override
+    public DownData onHardDropEvent(MoveEvent event) {
+        // 1. Move down as far as possible in the current tick.
+        boolean movedAtLeastOnce = false;
+        while (board.moveBrickDown()) {
+            movedAtLeastOnce = true;
+        }
+
+        // 2. Once we can no longer move, treat it as a landing.
+        ClearRow clearRow = handleBrickLanded();
+
+        // 这里可以考虑给 hard drop 额外加分，比如根据下落格数；
+        // 为了简单和安全，现在只保留行消除/落地得分逻辑。
+
+        return new DownData(clearRow, board.getViewData());
+    }
+
+    @Override
+    public ViewData onLeftEvent(MoveEvent event) {
+        board.moveBrickLeft();
+        return board.getViewData();
+    }
+
+    @Override
+    public ViewData onRightEvent(MoveEvent event) {
+        board.moveBrickRight();
+        return board.getViewData();
+    }
+
+    @Override
+    public ViewData onRotateEvent(MoveEvent event) {
+        board.rotateLeftBrick();
+        return board.getViewData();
+    }
+
+    /**
+     * HOLD input handler.
+     */
+    @Override
+    public ViewData onHoldEvent(MoveEvent event) {
+        board.holdCurrentBrick();
+        return board.getViewData();
+    }
+
+    // ========================= SURVIVAL / RUSH LOGIC =========================
 
     /**
      * Survival-mode behaviour: dynamic garbage pressure and shields.
@@ -157,6 +210,7 @@ public class GameController implements InputEventListener {
 
         int linesRemoved = (clearRow != null) ? clearRow.getLinesRemoved() : 0;
 
+        // Gain a shield on Tetris.
         if (linesRemoved >= 4) {
             survivalShields++;
             if (survivalShields > SURVIVAL_MAX_SHIELDS) {
@@ -218,6 +272,7 @@ public class GameController implements InputEventListener {
      * Runs when the falling brick can no longer move down.
      */
     private ClearRow handleBrickLanded() {
+        // Lock brick into background.
         board.mergeBrickToBackground();
 
         ClearRow clearRow = board.clearRows();
@@ -235,6 +290,7 @@ public class GameController implements InputEventListener {
             score.registerLandingWithoutClear();
         }
 
+        // Mode-specific effects.
         handleSurvivalEffects(clearRow, score);
 
         // Rush-40 goal logic.
@@ -287,34 +343,12 @@ public class GameController implements InputEventListener {
         return clearRow;
     }
 
-    @Override
-    public ViewData onLeftEvent(MoveEvent event) {
-        board.moveBrickLeft();
-        return board.getViewData();
-    }
-
-    @Override
-    public ViewData onRightEvent(MoveEvent event) {
-        board.moveBrickRight();
-        return board.getViewData();
-    }
-
-    @Override
-    public ViewData onRotateEvent(MoveEvent event) {
-        board.rotateLeftBrick();
-        return board.getViewData();
-    }
+    // ========================= PUBLIC HELPERS =========================
 
     /**
-     * HOLD input handler.
+     * Reset the current game without changing mode / config.
+     * Called from Main menu / GUI.
      */
-    @Override
-    public ViewData onHoldEvent(MoveEvent event) {
-        board.holdCurrentBrick();
-        return board.getViewData();
-    }
-
-    @Override
     public void createNewGame() {
         survivalNoClearLandingCount = 0;
         survivalShields = 0;

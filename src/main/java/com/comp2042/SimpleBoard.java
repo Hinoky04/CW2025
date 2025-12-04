@@ -303,13 +303,22 @@ public class SimpleBoard implements Board {
             holdData = heldBrick.getShapeMatrix().get(0);
         }
 
+        int currentX = (int) currentOffset.getX();
+        int currentY = (int) currentOffset.getY();
+        int[][] currentShape = brickRotator.getCurrentShape();
+
+        // Compute where this brick would finally land if hard-dropped straight down.
+        int ghostY = computeLandingY(currentX, currentY, currentShape);
+
         return new ViewData(
-                brickRotator.getCurrentShape(),
-                (int) currentOffset.getX(),
-                (int) currentOffset.getY(),
+                currentShape,
+                currentX,
+                currentY,
                 nextData,
                 nextQueue,
-                holdData
+                holdData,
+                currentX,
+                ghostY
         );
     }
 
@@ -404,5 +413,19 @@ public class SimpleBoard implements Board {
         heldBrick = null;
         hasHeldThisTurn = false;
         createNewBrick();
+    }
+
+    /**
+     * Computes the final Y coordinate where the given shape would land
+     * if it were hard-dropped from (startX, startY) straight down.
+     */
+    private int computeLandingY(int startX, int startY, int[][] shape) {
+        int landingY = startY;
+
+        // Move the piece down one row at a time while the next step is still valid.
+        while (!MatrixOperations.intersect(boardMatrix, shape, startX, landingY + 1)) {
+            landingY++;
+        }
+        return landingY;
     }
 }
