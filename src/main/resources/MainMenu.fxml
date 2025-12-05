@@ -3,51 +3,112 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
 <?import java.net.URL?>
 
-<!-- Simple main menu shown at startup. -->
-<VBox xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.comp2042.MainMenuController"
-      alignment="CENTER"
-      spacing="12">
-    <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
-    </padding>
+<!-- Modern main menu with improved layout and visual design -->
+<StackPane xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.comp2042.MainMenuController">
+    
+    <!-- Main content container -->
+    <VBox alignment="CENTER" spacing="40" styleClass="menu-container">
+        <padding>
+            <Insets top="60" right="40" bottom="60" left="40"/>
+        </padding>
 
-    <!-- Big title, reuse your digital style. -->
-    <Label fx:id="titleLabel"
-           text="TetrisJFX"
-           styleClass="gameOverStyle"/>
+        <!-- Title section with enhanced styling -->
+        <VBox alignment="CENTER" spacing="8" styleClass="title-section">
+            <Label fx:id="titleLabel"
+                   text="TetrisJFX"
+                   styleClass="menu-title"/>
+            <Label text="Choose Your Challenge"
+                   styleClass="menu-subtitle"/>
+        </VBox>
 
-    <!-- One button per game mode. -->
-    <Button fx:id="classicButton"
-            text="Classic"
-            onAction="#handleClassic"
-            styleClass="ipad-dark-grey"/>
+        <!-- Game mode buttons container -->
+        <VBox alignment="CENTER" spacing="16" styleClass="button-container">
+            <Button fx:id="classicButton"
+                    text="Classic"
+                    onAction="#handleClassic"
+                    styleClass="menu-button"/>
+            
+            <Button fx:id="survivalButton"
+                    text="Survival"
+                    onAction="#handleSurvival"
+                    styleClass="menu-button"/>
+            
+            <Button fx:id="hyperButton"
+                    text="Hyper"
+                    onAction="#handleHyper"
+                    styleClass="menu-button"/>
+            
+            <Button fx:id="rushButton"
+                    text="Rush 40"
+                    onAction="#handleRush"
+                    styleClass="menu-button"/>
+        </VBox>
 
-    <Button fx:id="survivalButton"
-            text="Survival"
-            onAction="#handleSurvival"
-            styleClass="ipad-dark-grey"/>
+        <!-- Settings and Quit buttons separated at bottom -->
+        <VBox alignment="CENTER" spacing="12">
+            <Button fx:id="settingsButton"
+                    text="Settings"
+                    onAction="#handleSettings"
+                    styleClass="menu-button"/>
+            
+            <Button fx:id="quitButton"
+                    text="Quit"
+                    onAction="#handleQuit"
+                    styleClass="menu-button-quit"/>
+        </VBox>
+    </VBox>
 
-    <Button fx:id="hyperButton"
-            text="Hyper"
-            onAction="#handleHyper"
-            styleClass="ipad-dark-grey"/>
-
-    <Button fx:id="rushButton"
-            text="Rush 40"
-            onAction="#handleRush"
-            styleClass="ipad-dark-grey"/>
-
-    <Button fx:id="quitButton"
-            text="Quit"
-            onAction="#handleQuit"
-            styleClass="ipad-dark-grey"/>
+    <!-- Tutorial overlay (shown on first visit) - Centered modal page -->
+    <StackPane fx:id="tutorialOverlay"
+               visible="false"
+               alignment="CENTER"
+               mouseTransparent="false"
+               pickOnBounds="true">
+        <!-- Semi-transparent background overlay covering entire screen -->
+        <Region style="-fx-background-color: rgba(0,0,0,0.85);"
+                maxWidth="Infinity"
+                maxHeight="Infinity"/>
+        
+        <!-- Centered tutorial panel - appears as a modal page -->
+        <VBox alignment="CENTER" spacing="20.0" styleClass="tutorial-panel">
+            <padding>
+                <Insets top="50.0" right="50.0" bottom="50.0" left="50.0"/>
+            </padding>
+            
+            <children>
+                <Label text="HOW TO PLAY" styleClass="tutorial-title"/>
+                
+                <VBox alignment="CENTER_LEFT" spacing="12.0" styleClass="tutorial-content">
+                    <Label text="Objective:" styleClass="tutorial-section"/>
+                    <Label text="• Clear lines by filling horizontal rows" styleClass="tutorial-text"/>
+                    <Label text="• Complete lines disappear and you score points" styleClass="tutorial-text"/>
+                    <Label text="• Game ends when blocks reach the top" styleClass="tutorial-text"/>
+                    
+                    <Label text="Controls:" styleClass="tutorial-section"/>
+                    <Label text="• Arrow Keys: Move and rotate pieces" styleClass="tutorial-text"/>
+                    <Label text="• Space: Hard drop (instant drop)" styleClass="tutorial-text"/>
+                    <Label text="• C: Hold current piece" styleClass="tutorial-text"/>
+                    <Label text="• P / ESC: Pause game" styleClass="tutorial-text"/>
+                    
+                    <Label text="Tips:" styleClass="tutorial-section"/>
+                    <Label text="• The shadow shows where the piece will land" styleClass="tutorial-text"/>
+                    <Label text="• Clear multiple lines at once for bonus points" styleClass="tutorial-text"/>
+                    <Label text="• Plan ahead using the NEXT preview" styleClass="tutorial-text"/>
+                </VBox>
+                
+                <Button fx:id="tutorialCloseButton"
+                        text="Got it! Let's Play"
+                        styleClass="pause-button"/>
+            </children>
+        </VBox>
+    </StackPane>
 
     <!-- Reuse the same stylesheet as the game scene. -->
     <stylesheets>
         <URL value="@window_style.css"/>
     </stylesheets>
-</VBox>
+</StackPane>

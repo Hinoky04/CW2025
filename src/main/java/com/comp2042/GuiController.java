@@ -69,6 +69,9 @@ public class GuiController implements Initializable {
     private GridPane brickPanel;         // grid used to display current piece
 
     @FXML
+    private GridPane ghostPanel;        // grid used to display shadow/ghost piece
+
+    @FXML
     private GridPane holdBrickPanel;     // grid used to display HOLD preview
 
     // Three NEXT preview panels (top / middle / bottom of queue).
@@ -126,6 +129,9 @@ public class GuiController implements Initializable {
     private Button restartButton;
 
     @FXML
+    private Button pauseSettingsButton;
+
+    @FXML
     private Button pauseMenuButton;
 
     // Background cells (for the board).
@@ -133,6 +139,9 @@ public class GuiController implements Initializable {
 
     // Current falling piece cells.
     private Rectangle[][] rectangles;
+
+    // Shadow/ghost piece cells (landing position preview).
+    private Rectangle[][] ghostRectangles;
 
     // NEXT preview cells (for 3 upcoming bricks).
     private Rectangle[][] nextBrickRectanglesTop;
@@ -167,6 +176,9 @@ public class GuiController implements Initializable {
     // Current game mode for this run (Classic / Survival, etc.).
     private GameMode currentMode;
 
+    // Game settings (key bindings)
+    private GameSettings gameSettings;
+
     // Timer configuration and state.
     private boolean timerEnabled;
     private long timerStartNanos;
@@ -194,8 +206,6 @@ public class GuiController implements Initializable {
     // === GHOST PIECE SUPPORT (landing shadow driven by ViewData from the board) ===
     /** Last ViewData snapshot describing the current falling brick. */
     private ViewData lastViewData;
-    /** Visual layer that renders the landing shadow between background and active brick. */
-    private Group ghostGroup;
 
     /**
      * Called from Main.showGameScene() so this controller can access
@@ -203,6 +213,7 @@ public class GuiController implements Initializable {
      */
     void init(Main mainApp) {
         this.mainApp = mainApp;
+        this.gameSettings = GameSettings.getInstance();
     }
 
     /**
@@ -293,17 +304,12 @@ public class GuiController implements Initializable {
             brickPanel.setSnapToPixel(true);
         }
 
-        // === Ghost layer: inserted between the board background and active brick overlay ===
-        if (brickPanel != null && brickPanel.getParent() instanceof Pane parent) {
-            ghostGroup = new Group();
-            ghostGroup.setMouseTransparent(true);
-            // Render the ghost directly underneath the active-brick grid.
-            int idx = parent.getChildren().indexOf(brickPanel);
-            if (idx < 0) {
-                parent.getChildren().add(ghostGroup);
-            } else {
-                parent.getChildren().add(idx, ghostGroup);
-            }
+        // The ghost/shadow overlay is positioned manually; same setup as brickPanel.
+        if (ghostPanel != null) {
+            ghostPanel.setVisible(false);          // hidden until layout is calibrated
+            ghostPanel.setManaged(false);          // excluded from parent layout
+            ghostPanel.setMouseTransparent(true);  // clicks go through
+            ghostPanel.setSnapToPixel(true);
         }
 
         // Wire game-over panel buttons to restart / main menu.
@@ -318,6 +324,9 @@ public class GuiController implements Initializable {
         }
         if (restartButton != null) {
             restartButton.setOnAction(e -> restartSameMode());
+        }
+        if (pauseSettingsButton != null) {
+            pauseSettingsButton.setOnAction(e -> goToSettings());
         }
         if (pauseMenuButton != null) {
             pauseMenuButton.setOnAction(e -> backToMainMenu());
@@ -351,15 +360,15 @@ public class GuiController implements Initializable {
             return;
         }
 
-        // P or ESC toggle pause/resume (only when not in GAME_OVER).
-        if (code == KeyCode.P || code == KeyCode.ESCAPE) {
+        // Pause toggle (uses settings - both P and ESC work)
+        if (code == gameSettings.getPause() || code == gameSettings.getPauseAlt()) {
             togglePause();
             event.consume();
             return;
         }
 
-        // N restarts the current mode from scratch.
-        if (code == KeyCode.N) {
+        // Restart (uses settings)
+        if (code == gameSettings.getRestart()) {
             restartSameMode();
             event.consume();
             return;
@@ -369,44 +378,47 @@ public class GuiController implements Initializable {
             return;
         }
 
-        if (code == KeyCode.LEFT || code == KeyCode.A) {
+        // Move left (uses settings)
+        if (code == gameSettings.getMoveLeft()) {
             refreshBrick(eventListener.onLeftEvent(
                     new MoveEvent(EventType.LEFT, EventSource.USER)));
             SoundManager.playMove();
             event.consume();
         }
 
-        if (code == KeyCode.RIGHT || code == KeyCode.D) {
+        // Move right (uses settings)
+        if (code == gameSettings.getMoveRight()) {
             refreshBrick(eventListener.onRightEvent(
                     new MoveEvent(EventType.RIGHT, EventSource.USER)));
             SoundManager.playMove();
             event.consume();
         }
 
-        if (code == KeyCode.UP || code == KeyCode.W) {
+        // Rotate (uses settings)
+        if (code == gameSettings.getRotate()) {
             refreshBrick(eventListener.onRotateEvent(
                     new MoveEvent(EventType.ROTATE, EventSource.USER)));
             SoundManager.playRotate();
             event.consume();
         }
 
-        // HOLD: use C to hold/swap the current piece.
-        if (code == KeyCode.C) {
+        // Hold (uses settings)
+        if (code == gameSettings.getHold()) {
             refreshBrick(eventListener.onHoldEvent(
                     new MoveEvent(EventType.DOWN, EventSource.USER)));
             SoundManager.playHold();
             event.consume();
         }
 
-        // Soft drop
-        if (code == KeyCode.DOWN || code == KeyCode.S) {
-            moveDown(new MoveEvent(EventType.DOWN, EventSource.THREAD));
+        // Soft drop (uses settings)
+        if (code == gameSettings.getSoftDrop()) {
+            moveDown(new MoveEvent(EventType.DOWN, EventSource.USER));
             SoundManager.playMove();
             event.consume();
         }
 
-        // 如果你已经实现了 HARD_DROP，在这里加 SPACE 调用 onHardDropEvent
-        if (code == KeyCode.SPACE) {
+        // Hard drop (uses settings)
+        if (code == gameSettings.getHardDrop()) {
             DownData downData = eventListener.onHardDropEvent(
                     new MoveEvent(EventType.HARD_DROP, EventSource.USER));
             if (downData.getClearRow() != null &&
@@ -422,6 +434,27 @@ public class GuiController implements Initializable {
             refreshBrick(downData.getViewData());
             event.consume();
         }
+    }
+
+    /**
+     * Shows a milestone notification for Rush 40 mode.
+     * Called when the player reaches milestones (10, 20, 30, 40 lines).
+     * Positioned higher than score bonuses to avoid overlap.
+     *
+     * @param message the milestone message to display (e.g., "10 Lines Cleared!")
+     */
+    public void showRushMilestone(String message) {
+        if (groupNotification == null) {
+            return;
+        }
+        NotificationPanel notificationPanel = new NotificationPanel(message);
+        // Position milestone notifications higher (about 60 pixels above score bonuses)
+        notificationPanel.setLayoutY(143.0); // Original is 203.0, so 203 - 60 = 143
+        groupNotification.getChildren().add(notificationPanel);
+        notificationPanel.showScore(groupNotification.getChildren());
+        
+        // Play a sound for milestone achievement (reuse line clear sound or could add a new one)
+        SoundManager.playLineClear();
     }
 
     /**
@@ -449,6 +482,7 @@ public class GuiController implements Initializable {
     public void initGameView(int[][] boardMatrix, ViewData brick) {
         initBackgroundCells(boardMatrix);
         initFallingBrick(brick);
+        initGhost(brick);
         initNextBrick(brick);
         initHoldBrick(brick);
 
@@ -458,8 +492,7 @@ public class GuiController implements Initializable {
         Platform.runLater(() -> {
             calibrateBoardLayout();
             updateBrickPanelPosition(brick);
-            // Draw initial ghost at the spawn position.
-            refreshGhostOverlay();
+            refreshGhost(brick);
         });
 
         startAutoDropTimer();
@@ -511,6 +544,26 @@ public class GuiController implements Initializable {
                 setRectangleData(brickData[row][col], cell);
                 rectangles[row][col] = cell;
                 brickPanel.add(cell, col, row);
+            }
+        }
+    }
+
+    /**
+     * Initialize the ghost/shadow piece overlay.
+     * Creates rectangles for the shadow block at the landing position.
+     */
+    private void initGhost(ViewData brick) {
+        if (ghostPanel == null) {
+            return;
+        }
+        int[][] brickData = brick.getBrickData();
+        ghostRectangles = new Rectangle[brickData.length][brickData[0].length];
+        for (int row = 0; row < brickData.length; row++) {
+            for (int col = 0; col < brickData[row].length; col++) {
+                Rectangle cell = new Rectangle(BRICK_SIZE, BRICK_SIZE);
+                setGhostRectangleData(brickData[row][col], cell);
+                ghostRectangles[row][col] = cell;
+                ghostPanel.add(cell, col, row);
             }
         }
     }
@@ -669,6 +722,43 @@ public class GuiController implements Initializable {
         initHoldBrick(brick);
     }
 
+    // === GHOST / SHADOW initialisation & refresh ===
+
+    /**
+     * Refresh the ghost/shadow piece to show where the current brick will land.
+     * Updates both position and visual representation.
+     */
+    private void refreshGhost(ViewData brick) {
+        if (ghostPanel == null || brick == null || gameState != GameState.PLAYING) {
+            return;
+        }
+
+        // Initialize ghost rectangles if not already created
+        if (ghostRectangles == null) {
+            initGhost(brick);
+        }
+
+        // Update position to landing location
+        updateGhostPanelPosition(brick);
+
+        // Update visual representation
+        int[][] brickData = brick.getBrickData();
+        if (ghostRectangles != null && ghostRectangles.length == brickData.length
+                && ghostRectangles[0].length == brickData[0].length) {
+            for (int row = 0; row < brickData.length; row++) {
+                for (int col = 0; col < brickData[row].length; col++) {
+                    if (ghostRectangles[row][col] != null) {
+                        setGhostRectangleData(brickData[row][col], ghostRectangles[row][col]);
+                    }
+                }
+            }
+        } else {
+            // If dimensions changed, reinitialize
+            ghostPanel.getChildren().clear();
+            initGhost(brick);
+        }
+    }
+
     private void startAutoDropTimer() {
         timeLine = new Timeline(new KeyFrame(
                 Duration.millis(fallIntervalMs),
@@ -782,8 +872,11 @@ public class GuiController implements Initializable {
 
         boardLayoutCalibrated = true;
 
-        // Now it's safe to show the falling-brick overlay
+        // Now it's safe to show the falling-brick overlay and ghost overlay
         brickPanel.setVisible(true);
+        if (ghostPanel != null) {
+            ghostPanel.setVisible(true);
+        }
     }
 
     /**
@@ -800,6 +893,22 @@ public class GuiController implements Initializable {
 
         brickPanel.setLayoutX(Math.round(x));
         brickPanel.setLayoutY(Math.round(y));
+    }
+
+    /**
+     * Moves the ghostPanel so that the shadow piece lines up exactly with
+     * the background grid at the landing position.
+     */
+    private void updateGhostPanelPosition(ViewData brick) {
+        if (!boardLayoutCalibrated || ghostPanel == null || brick == null) {
+            return;
+        }
+
+        double x = boardOriginX + brick.getGhostXPosition() * boardCellWidth;
+        double y = boardOriginY + (brick.getGhostYPosition() - HIDDEN_TOP_ROWS) * boardCellHeight;
+
+        ghostPanel.setLayoutX(Math.round(x));
+        ghostPanel.setLayoutY(Math.round(y));
     }
 
     // === Colour logic: active brick, background bricks and ghost ===
@@ -895,6 +1004,37 @@ public class GuiController implements Initializable {
         rectangle.setArcWidth(9);
     }
 
+    /**
+     * Draw a single cell of the ghost/shadow layer.
+     * Uses semi-transparent fill with an outline to make it visually distinct.
+     */
+    private void setGhostRectangleData(int colorCode, Rectangle rectangle) {
+        if (colorCode == 0) {
+            rectangle.setFill(Color.TRANSPARENT);
+            rectangle.setStroke(null);
+        } else {
+            Paint baseColor = getFillColor(colorCode);
+            // Make it semi-transparent (30% opacity)
+            if (baseColor instanceof Color) {
+                Color c = (Color) baseColor;
+                Color ghostColor = new Color(
+                        c.getRed(),
+                        c.getGreen(),
+                        c.getBlue(),
+                        0.3  // 30% opacity
+                );
+                rectangle.setFill(ghostColor);
+            } else {
+                rectangle.setFill(baseColor);
+            }
+            // Add a subtle outline to make it more visible
+            rectangle.setStroke(Color.WHITE);
+            rectangle.setStrokeWidth(1.5);
+            rectangle.setArcHeight(9);
+            rectangle.setArcWidth(9);
+        }
+    }
+
     private void refreshBrick(ViewData brick) {
         if (gameState == GameState.PLAYING) {
             lastViewData = brick;
@@ -910,7 +1050,7 @@ public class GuiController implements Initializable {
 
             refreshNextBrick(brick);
             refreshHoldBrick(brick);
-            refreshGhostOverlay();
+            refreshGhost(brick);
         }
     }
 
@@ -923,7 +1063,9 @@ public class GuiController implements Initializable {
         updateDangerFromBoard(board);
 
         // After the background changes we must recompute and redraw the landing shadow.
-        refreshGhostOverlay();
+        if (lastViewData != null) {
+            refreshGhost(lastViewData);
+        }
     }
 
     private void moveDown(MoveEvent event) {
@@ -1018,8 +1160,9 @@ public class GuiController implements Initializable {
             brickPanel.getChildren().clear();
         }
 
-        if (ghostGroup != null) {
-            ghostGroup.getChildren().clear();
+        if (ghostPanel != null) {
+            ghostPanel.getChildren().clear();
+            ghostRectangles = null;
         }
 
         SoundManager.playGameOver();
@@ -1091,6 +1234,24 @@ public class GuiController implements Initializable {
         MusicPlayer.stopBackgroundMusic();
 
         mainApp.showGameScene(currentMode);
+    }
+
+    private void goToSettings() {
+        // Pause the game while in settings
+        if (timeLine != null) {
+            timeLine.pause();
+        }
+        if (hudTimer != null && timerEnabled && timerRunning) {
+            timerPauseStartNanos = System.nanoTime();
+            timerRunning = false;
+            hudTimer.pause();
+        }
+        MusicPlayer.pauseBackgroundMusic();
+
+        if (mainApp != null && currentMode != null) {
+            // Pass the current game mode so we can return to it after settings
+            mainApp.showSettingsScene(currentMode);
+        }
     }
 
     private void backToMainMenu() {
@@ -1299,76 +1460,6 @@ public class GuiController implements Initializable {
         gameOver();
     }
 
-    // === GHOST / LANDING SHADOW RENDERING (driven by ghost position from ViewData) ===
-
-    /**
-     * Recalculates and draws the landing shadow based on the ghost position
-     * provided by the board in {@link ViewData}.
-     *
-     * This method only affects visuals; the underlying board state is not changed.
-     */
-    private void refreshGhostOverlay() {
-        if (ghostGroup == null) {
-            return;
-        }
-        ghostGroup.getChildren().clear();
-
-        if (!boardLayoutCalibrated || lastViewData == null || displayMatrix == null) {
-            return;
-        }
-
-        int rows = displayMatrix.length;
-        if (rows == 0 || displayMatrix[0] == null) {
-            return;
-        }
-        int cols = displayMatrix[0].length;
-
-        int[][] shape = lastViewData.getBrickData();
-        if (shape == null || shape.length == 0 || shape[0].length == 0) {
-            return;
-        }
-
-        int ghostX = lastViewData.getGhostXPosition();
-        int ghostY = lastViewData.getGhostYPosition();
-
-        // Convert board coordinates back into pixel coordinates and draw the ghost.
-        for (int r = 0; r < shape.length; r++) {
-            for (int c = 0; c < shape[r].length; c++) {
-                if (shape[r][c] == 0) {
-                    continue;
-                }
-
-                int boardRow = ghostY + r;
-                int boardCol = ghostX + c;
-
-                if (boardCol < 0 || boardCol >= cols || boardRow >= rows) {
-                    continue;
-                }
-
-                // Skip hidden spawn rows so the landing shadow only appears in the visible area.
-                if (boardRow < HIDDEN_TOP_ROWS) {
-                    continue;
-                }
-
-                double x = boardOriginX + boardCol * boardCellWidth;
-                double y = boardOriginY + (boardRow - HIDDEN_TOP_ROWS) * boardCellHeight;
-
-                Rectangle ghostRect = new Rectangle(
-                        Math.max(1.0, boardCellWidth - 1.0),
-                        Math.max(1.0, boardCellHeight - 1.0)
-                );
-                ghostRect.setLayoutX(Math.round(x));
-                ghostRect.setLayoutY(Math.round(y));
-                // Soft white shadow so the ghost is visible but not distracting.
-                ghostRect.setFill(new Color(1.0, 1.0, 1.0, 0.22));
-                ghostRect.setArcWidth(9);
-                ghostRect.setArcHeight(9);
-
-                ghostGroup.getChildren().add(ghostRect);
-            }
-        }
-    }
-
-    // Helper methods for ghost landing are now provided by the board via ViewData,
-    // so no GUI-side collision helpers are required here.
+    // === GHOST / LANDING SHADOW RENDERING ===
+    // Shadow rendering code removed - ready for fresh implementation
 }

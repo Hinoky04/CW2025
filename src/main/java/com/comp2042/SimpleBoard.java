@@ -10,7 +10,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Core game model that holds board state, active brick, and score.
- * Handles movement, rotation, collision, clearing rows and garbage rows.
+ * Handles movement, rotation, collision detection, line clearing, and garbage rows.
+ * Implements the Board interface to provide game logic functionality.
  */
 public class SimpleBoard implements Board {
 
@@ -36,10 +37,11 @@ public class SimpleBoard implements Board {
     private boolean hasHeldThisTurn;
 
     /**
-     * Construct a board with the given logical size.
+     * Constructs a board with the given logical size.
+     * Initializes the board matrix, brick generator, rotator, and score system.
      *
-     * @param rows    number of rows (including hidden rows at the top)
-     * @param columns number of columns
+     * @param rows    number of rows (including hidden rows at the top for spawn area)
+     * @param columns number of columns (standard Tetris uses 10)
      */
     public SimpleBoard(int rows, int columns) {
         this.rows = rows;
@@ -64,7 +66,10 @@ public class SimpleBoard implements Board {
     }
 
     /**
-     * Move the current brick left by one cell.
+     * Moves the current brick left by one cell.
+     * Checks for collisions and left boundary before moving.
+     *
+     * @return true if move succeeded, false if blocked
      */
     @Override
     public boolean moveBrickLeft() {
@@ -72,7 +77,10 @@ public class SimpleBoard implements Board {
     }
 
     /**
-     * Move the current brick right by one cell.
+     * Moves the current brick right by one cell.
+     * Checks for collisions and right boundary before moving.
+     *
+     * @return true if move succeeded, false if blocked
      */
     @Override
     public boolean moveBrickRight() {
@@ -119,17 +127,12 @@ public class SimpleBoard implements Board {
     }
 
     /**
-     * Rotate the current brick to its next orientation.
+     * Rotates the current brick to its next orientation.
+     * Uses a wall-kick system: tries rotating in place first, then attempts
+     * horizontal offsets (-1, +1, -2, +2) if the initial rotation would cause a collision.
+     * This provides Tetris-style wall kicks on both left and right edges.
      *
-     * Strategy:
-     *   1. Try rotating in place at the current offset.
-     *   2. If that fails, try a small set of horizontal "kicks":
-     *      dx in { -1, +1, -2, +2 }.
-     *   3. The first position that is inside the board and collision-free
-     *      is accepted.
-     *
-     * This gives a symmetric, Tetris-style wall kick on both left and right
-     * edges without moving the board itself.
+     * @return true if rotation succeeded, false if all positions are blocked
      */
     @Override
     public boolean rotateLeftBrick() {
@@ -207,9 +210,11 @@ public class SimpleBoard implements Board {
     }
 
     /**
-     * Create a new brick at the spawn position.
+     * Creates a new brick at the spawn position.
+     * Generates a random brick from the brick generator and places it at the top center.
      *
-     * @return true if the new brick immediately collides with existing blocks
+     * @return true if the new brick immediately collides with existing blocks (game over),
+     *         false if the brick spawns successfully
      */
     @Override
     public boolean createNewBrick() {
@@ -236,12 +241,13 @@ public class SimpleBoard implements Board {
     }
 
     /**
-     * Hold or swap the current brick.
-     * If no brick is held, move current brick into hold and spawn the next brick.
-     * If a brick is already held, swap it with the current one.
-     * This can only be used once per brick life-cycle.
+     * Holds or swaps the current brick.
+     * If no brick is held, moves current brick into hold and spawns the next brick.
+     * If a brick is already held, swaps it with the current one.
+     * This can only be used once per brick life-cycle (until the brick lands).
      *
-     * @return true if the new active brick immediately collides with existing blocks
+     * @return true if the new active brick immediately collides with existing blocks (game over),
+     *         false if the hold/swap succeeded
      */
     @Override
     public boolean holdCurrentBrick() {
@@ -277,11 +283,23 @@ public class SimpleBoard implements Board {
         return collision;
     }
 
+    /**
+     * Returns a defensive copy of the board background matrix.
+     * The matrix represents the static blocks that have been placed on the board.
+     *
+     * @return a copy of the board matrix (rows x columns)
+     */
     @Override
     public int[][] getBoardMatrix() {
         return boardMatrix;
     }
 
+    /**
+     * Returns a snapshot of the current view state for rendering.
+     * Includes the active brick, its position, next/hold previews, and ghost position.
+     *
+     * @return ViewData containing all information needed to render the current game state
+     */
     @Override
     public ViewData getViewData() {
         // Get up to 3 upcoming bricks from the generator.
@@ -340,7 +358,9 @@ public class SimpleBoard implements Board {
     }
 
     /**
-     * Merge the falling brick into the background matrix.
+     * Merges the falling brick into the background matrix.
+     * Called when a brick can no longer move down. The brick's cells are permanently
+     * added to the board matrix. After merging, a new brick will be spawned.
      */
     @Override
     public void mergeBrickToBackground() {
@@ -355,7 +375,12 @@ public class SimpleBoard implements Board {
     }
 
     /**
-     * Check and clear full rows, update matrix safely.
+     * Checks for and clears full rows, updating the matrix safely.
+     * Removes complete horizontal rows and shifts remaining blocks down.
+     * Calculates score bonus based on the number of lines cleared.
+     *
+     * @return ClearRow object containing the number of lines removed and score bonus,
+     *         or null if no lines were cleared
      */
     @Override
     public ClearRow clearRows() {
@@ -370,6 +395,7 @@ public class SimpleBoard implements Board {
      * Pushes existing rows up by one and inserts a garbage row at the bottom.
      * The garbage row uses a single random colour with exactly one hole,
      * similar to typical survival-style Tetris garbage.
+     * Used in Survival mode when the player fails to clear lines.
      */
     @Override
     public void addGarbageRow() {
@@ -397,13 +423,20 @@ public class SimpleBoard implements Board {
         boardMatrix[rows - 1] = garbageRow;
     }
 
+    /**
+     * Returns the Score object associated with this board.
+     * Used to track points, level, lines cleared, and combo multiplier.
+     *
+     * @return the Score instance for this board
+     */
     @Override
     public Score getScore() {
         return score;
     }
 
     /**
-     * Reset board, score, and spawn a new brick.
+     * Resets the board, score, and spawns a new brick.
+     * Clears the board matrix, resets the score to zero, and starts a fresh game.
      */
     @Override
     public void newGame() {
@@ -418,14 +451,37 @@ public class SimpleBoard implements Board {
     /**
      * Computes the final Y coordinate where the given shape would land
      * if it were hard-dropped from (startX, startY) straight down.
+     * Used to calculate the ghost piece position.
+     *
+     * @param startX the starting X coordinate
+     * @param startY the starting Y coordinate
+     * @param shape the brick shape matrix
+     * @return the Y coordinate where the brick would land
      */
     private int computeLandingY(int startX, int startY, int[][] shape) {
+        // Start from the current position and move down until we can't go further
         int landingY = startY;
-
-        // Move the piece down one row at a time while the next step is still valid.
-        while (!MatrixOperations.intersect(boardMatrix, shape, startX, landingY + 1)) {
-            landingY++;
+        
+        // Keep moving down one row at a time while the next position is valid
+        // MatrixOperations.intersect returns true if there's a collision or out of bounds
+        while (true) {
+            // Check if we can move down one more row
+            int nextY = landingY + 1;
+            
+            // If next position would be out of bounds, stop here
+            if (nextY >= rows) {
+                break;
+            }
+            
+            // Check if there's a collision at the next position
+            if (MatrixOperations.intersect(boardMatrix, shape, startX, nextY)) {
+                break;
+            }
+            
+            // No collision, can move down
+            landingY = nextY;
         }
+        
         return landingY;
     }
 }

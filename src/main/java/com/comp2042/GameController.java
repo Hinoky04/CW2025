@@ -42,6 +42,9 @@ public class GameController implements InputEventListener {
     // Lines cleared so far in this Rush-40 run.
     private int rushLinesCleared = 0;
 
+    // Last milestone reached (0, 10, 20, 30, 40) to track progress notifications.
+    private int lastRushMilestone = 0;
+
     // Marks whether the Rush-40 goal has been completed.
     private boolean rushCompleted = false;
 
@@ -53,8 +56,11 @@ public class GameController implements InputEventListener {
     private int totalLinesCleared = 0;
 
     /**
-     * Create a new game controller and use the default board size
-     * for the selected mode. Behaviour diverges via GameConfig values.
+     * Creates a new game controller and uses the default board size
+     * for the selected mode. Behavior diverges via GameConfig values.
+     *
+     * @param guiController the GUI controller for rendering and input
+     * @param gameMode the game mode to play (Classic, Survival, Hyper, or Rush 40)
      */
     public GameController(GuiController guiController, GameMode gameMode) {
         this.guiController = guiController;
@@ -100,6 +106,7 @@ public class GameController implements InputEventListener {
             rushStartNanos = System.nanoTime();
             rushEndNanos = 0L;
             rushLinesCleared = 0;
+            lastRushMilestone = 0;
             rushCompleted = false;
         }
 
@@ -107,7 +114,10 @@ public class GameController implements InputEventListener {
     }
 
     /**
-     * Initialises the generic progress HUD line depending on the current mode.
+     * Initializes the generic progress HUD line depending on the current mode.
+     * Sets up mode-specific progress tracking (e.g., Rush 40 line count, Survival shields).
+     *
+     * @param score the Score object to track progress
      */
     private void initialiseProgressHud(Score score) {
         if (rushModeActive && rushTargetLines > 0) {
@@ -146,38 +156,62 @@ public class GameController implements InputEventListener {
     }
 
     /**
-     * Hard drop: move the current brick straight down until it lands,
-     * then run the same landing / line-clear logic once.
+     * Handles hard drop (space bar) input.
+     * Moves the current brick straight down until it lands, then processes
+     * line clearing. Does not award points for the drop itself, only for clearing lines.
+     *
+     * @param event the move event
+     * @return DownData containing any line clear results and updated view data
      */
     @Override
     public DownData onHardDropEvent(MoveEvent event) {
         // 1. Move down as far as possible in the current tick.
-        boolean movedAtLeastOnce = false;
+        int cellsDropped = 0;
         while (board.moveBrickDown()) {
-            movedAtLeastOnce = true;
+            cellsDropped++;
         }
 
         // 2. Once we can no longer move, treat it as a landing.
         ClearRow clearRow = handleBrickLanded();
 
-        // 这里可以考虑给 hard drop 额外加分，比如根据下落格数；
-        // 为了简单和安全，现在只保留行消除/落地得分逻辑。
+        // Award points for hard drop based on distance (2 points per cell)
+        if (cellsDropped > 0) {
+            board.getScore().addHardDropScore(cellsDropped);
+        }
 
         return new DownData(clearRow, board.getViewData());
     }
 
+    /**
+     * Handles left movement input.
+     *
+     * @param event the move event
+     * @return updated view data after moving left
+     */
     @Override
     public ViewData onLeftEvent(MoveEvent event) {
         board.moveBrickLeft();
         return board.getViewData();
     }
 
+    /**
+     * Handles right movement input.
+     *
+     * @param event the move event
+     * @return updated view data after moving right
+     */
     @Override
     public ViewData onRightEvent(MoveEvent event) {
         board.moveBrickRight();
         return board.getViewData();
     }
 
+    /**
+     * Handles rotation input.
+     *
+     * @param event the move event
+     * @return updated view data after rotating
+     */
     @Override
     public ViewData onRotateEvent(MoveEvent event) {
         board.rotateLeftBrick();
@@ -185,7 +219,11 @@ public class GameController implements InputEventListener {
     }
 
     /**
-     * HOLD input handler.
+     * Handles hold/swap input.
+     * Holds the current brick or swaps with the previously held brick.
+     *
+     * @param event the move event
+     * @return updated view data after holding/swapping
      */
     @Override
     public ViewData onHoldEvent(MoveEvent event) {
@@ -269,7 +307,11 @@ public class GameController implements InputEventListener {
     }
 
     /**
-     * Runs when the falling brick can no longer move down.
+     * Handles the logic when a falling brick can no longer move down.
+     * Merges the brick into the board, clears lines, updates score,
+     * and spawns a new brick. Handles mode-specific effects and game over conditions.
+     *
+     * @return ClearRow object if lines were cleared, null otherwise
      */
     private ClearRow handleBrickLanded() {
         // Lock brick into background.
@@ -295,9 +337,13 @@ public class GameController implements InputEventListener {
 
         // Rush-40 goal logic.
         if (rushModeActive && !rushCompleted && clearRow != null && clearRow.getLinesRemoved() > 0) {
+            int previousLines = rushLinesCleared;
             rushLinesCleared += clearRow.getLinesRemoved();
 
             guiController.updateRushProgress(rushLinesCleared, rushTargetLines);
+
+            // Check for milestone achievements (every 10 lines: 10, 20, 30, 40)
+            checkRushMilestones(previousLines, rushLinesCleared);
 
             if (rushLinesCleared >= rushTargetLines) {
                 rushCompleted = true;
@@ -346,14 +392,16 @@ public class GameController implements InputEventListener {
     // ========================= PUBLIC HELPERS =========================
 
     /**
-     * Reset the current game without changing mode / config.
-     * Called from Main menu / GUI.
+     * Resets the current game without changing mode or config.
+     * Clears the board, resets score, and starts a fresh game in the same mode.
+     * Called from the main menu or GUI restart button.
      */
     public void createNewGame() {
         survivalNoClearLandingCount = 0;
         survivalShields = 0;
 
         rushLinesCleared = 0;
+        lastRushMilestone = 0;
         rushCompleted = false;
         rushEndNanos = 0L;
         rushStartNanos = rushModeActive ? System.nanoTime() : 0L;
@@ -367,8 +415,10 @@ public class GameController implements InputEventListener {
     }
 
     /**
-     * Returns the Rush-40 completion time in seconds, or a negative value
-     * if the current run has not finished or is not a Rush-40 game.
+     * Returns the Rush-40 completion time in seconds.
+     *
+     * @return completion time in seconds, or -1.0 if the game has not finished
+     *         or is not a Rush-40 game
      */
     public double getRushCompletionTimeSeconds() {
         if (!rushModeActive || !rushCompleted || rushStartNanos == 0L || rushEndNanos == 0L) {
@@ -376,5 +426,30 @@ public class GameController implements InputEventListener {
         }
         long durationNanos = rushEndNanos - rushStartNanos;
         return durationNanos / 1_000_000_000.0;
+    }
+
+    /**
+     * Checks if the player has reached a new milestone (10, 20, 30, 40 lines)
+     * and shows a notification message if so.
+     *
+     * @param previousLines lines cleared before this clear
+     * @param currentLines  lines cleared after this clear
+     */
+    private void checkRushMilestones(int previousLines, int currentLines) {
+        if (!rushModeActive) {
+            return;
+        }
+
+        // Check each milestone (10, 20, 30, 40)
+        int[] milestones = {10, 20, 30, 40};
+        for (int milestone : milestones) {
+            // Check if we crossed this milestone (previous < milestone <= current)
+            if (previousLines < milestone && currentLines >= milestone) {
+                lastRushMilestone = milestone;
+                String message = milestone + " Lines Cleared!";
+                guiController.showRushMilestone(message);
+                break; // Only show one notification per clear
+            }
+        }
     }
 }

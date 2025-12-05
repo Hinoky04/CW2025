@@ -13,6 +13,11 @@ import javafx.stage.Stage;
 import java.io.IOException;
 import java.net.URL;
 
+/**
+ * Main application class for TetrisJFX.
+ * Manages the JavaFX application lifecycle, scene switching, and window configuration.
+ * Handles navigation between main menu, game, and settings scenes.
+ */
 public class Main extends Application {
 
     // Window title shown in the title bar.
@@ -29,10 +34,17 @@ public class Main extends Application {
     // FXML paths in resources.
     private static final String GAME_FXML = "gameLayout.fxml";
     private static final String MAIN_MENU_FXML = "MainMenu.fxml";
+    private static final String SETTINGS_FXML = "Settings.fxml";
 
     // Primary stage is kept so we can swap scenes (menu <-> game).
     private Stage primaryStage;
 
+    /**
+     * Initializes and starts the JavaFX application.
+     * Sets up the primary stage, configures fullscreen mode, and displays the main menu.
+     *
+     * @param primaryStage the primary stage for this application
+     */
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -57,13 +69,13 @@ public class Main extends Application {
         // Start application on the main menu instead of directly in the game.
         showMainMenu();
 
-        // Start maximized to give a fullscreen-like experience by default.
-        // Players can still toggle real fullscreen with F11.
-        this.primaryStage.setMaximized(true);
+        // Always start in fullscreen mode.
+        this.primaryStage.setFullScreen(true);
     }
 
     /**
      * Loads and shows the main menu scene.
+     * Displays the game mode selection screen with options for Classic, Survival, Hyper, and Rush 40 modes.
      */
     void showMainMenu() {
         URL location = getClass().getClassLoader().getResource(MAIN_MENU_FXML);
@@ -88,14 +100,73 @@ public class Main extends Application {
 
             primaryStage.setScene(scene);
             primaryStage.show();
+            
+            // Ensure fullscreen mode is maintained
+            if (!primaryStage.isFullScreen()) {
+                primaryStage.setFullScreen(true);
+            }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load main menu", e);
         }
     }
 
     /**
+     * Loads and shows the settings scene.
+     * Allows users to customize key bindings for game controls.
+     *
+     * @param returnToGameMode if not null, return to this game mode after saving/canceling;
+     *                         if null, return to main menu
+     */
+    void showSettingsScene(GameMode returnToGameMode) {
+        URL location = getClass().getClassLoader().getResource(SETTINGS_FXML);
+        if (location == null) {
+            throw new IllegalStateException("Cannot find FXML file " + SETTINGS_FXML);
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(location);
+            Parent root = loader.load();
+
+            SettingsController controller = loader.getController();
+            controller.init(this, returnToGameMode);
+
+            bindRootToStageSize(root);
+
+            Scene scene = new Scene(root);
+            attachFullscreenToggle(scene);
+            
+            // Make sure the scene can receive key events
+            scene.setOnKeyPressed(null); // Clear any existing handlers
+
+            primaryStage.setScene(scene);
+            primaryStage.show();
+            
+            // Ensure fullscreen mode is maintained
+            if (!primaryStage.isFullScreen()) {
+                primaryStage.setFullScreen(true);
+            }
+            
+            // Request focus on the root so it can capture key events
+            root.requestFocus();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load settings scene", e);
+        }
+    }
+    
+    /**
+     * Overloaded method for backward compatibility (from main menu).
+     * Shows settings scene and returns to main menu after closing.
+     */
+    void showSettingsScene() {
+        showSettingsScene(null);
+    }
+
+    /**
      * Loads and shows the main game scene for the given mode.
+     * Initializes the game board, GUI controller, and starts the game logic.
      * This reuses the existing gameLayout.fxml + controllers.
+     *
+     * @param mode the game mode to start (Classic, Survival, Hyper, or Rush 40)
      */
     void showGameScene(GameMode mode) {
         URL location = getClass().getClassLoader().getResource(GAME_FXML);
@@ -122,7 +193,10 @@ public class Main extends Application {
             primaryStage.setScene(scene);
             primaryStage.show();
 
-            // Do not touch maximized/fullscreen here; keep whatever the user chose.
+            // Ensure fullscreen mode is maintained
+            if (!primaryStage.isFullScreen()) {
+                primaryStage.setFullScreen(true);
+            }
 
             // Start game logic.
             new GameController(guiController, mode);
@@ -134,6 +208,8 @@ public class Main extends Application {
     /**
      * If the root is a Region (BorderPane, AnchorPane, etc.), bind its preferred
      * size to the stage size so the layout always fills the window.
+     *
+     * @param root the root node of the scene to bind to stage size
      */
     private void bindRootToStageSize(Parent root) {
         if (root instanceof Region) {
@@ -146,6 +222,8 @@ public class Main extends Application {
     /**
      * Adds a global key handler to the given scene so F11 toggles fullscreen.
      * This works for both the main menu and the game scene.
+     *
+     * @param scene the scene to attach the fullscreen toggle handler to
      */
     private void attachFullscreenToggle(Scene scene) {
         if (scene == null) {

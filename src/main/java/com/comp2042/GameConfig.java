@@ -84,7 +84,7 @@ public final class GameConfig {
     public static GameConfig forMode(GameMode mode) {
         switch (mode) {
             case CLASSIC:
-                // Baseline tuning. No HUD timer by default.
+                // Baseline tuning. Timer shows elapsed time.
                 return new GameConfig(
                         400,   // baseFallIntervalMs (ms)
                         1.0,   // speedMultiplier
@@ -93,7 +93,7 @@ public final class GameConfig {
                         1.0,   // backgroundDimFactor (no dimming)
                         0,     // maxNoClearBeforeGarbage (off)
                         0,     // targetLinesToWin (no target)
-                        false  // showTimer
+                        true   // showTimer
                 );
             case SURVIVAL:
                 // Same basic speed as classic, with garbage pressure using

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.*?>
+<?import java.net.URL?>
+
+<!-- Settings page for configuring key bindings -->
+<StackPane xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.comp2042.SettingsController"
+           fx:id="rootPane"
+           focusTraversable="true">
+    
+    <!-- Main content container -->
+    <VBox alignment="CENTER" spacing="30" styleClass="menu-container">
+        <padding>
+            <Insets top="40" right="40" bottom="40" left="40"/>
+        </padding>
+
+        <!-- Title section -->
+        <VBox alignment="CENTER" spacing="8" styleClass="title-section">
+            <Label text="Settings"
+                   styleClass="menu-title"/>
+            <Label text="Configure Key Bindings"
+                   styleClass="menu-subtitle"/>
+        </VBox>
+
+        <!-- Key bindings configuration -->
+        <VBox alignment="CENTER" spacing="16" styleClass="settings-container">
+            <!-- Move Left -->
+            <HBox alignment="CENTER" spacing="20">
+                <Label text="Move Left:" styleClass="settings-label" prefWidth="150"/>
+                <Button fx:id="moveLeftButton" text="LEFT" styleClass="key-button" prefWidth="120"/>
+            </HBox>
+            
+            <!-- Move Right -->
+            <HBox alignment="CENTER" spacing="20">
+                <Label text="Move Right:" styleClass="settings-label" prefWidth="150"/>
+                <Button fx:id="moveRightButton" text="RIGHT" styleClass="key-button" prefWidth="120"/>
+            </HBox>
+            
+            <!-- Rotate -->
+            <HBox alignment="CENTER" spacing="20">
+                <Label text="Rotate:" styleClass="settings-label" prefWidth="150"/>
+                <Button fx:id="rotateButton" text="UP" styleClass="key-button" prefWidth="120"/>
+            </HBox>
+            
+            <!-- Soft Drop -->
+            <HBox alignment="CENTER" spacing="20">
+                <Label text="Soft Drop:" styleClass="settings-label" prefWidth="150"/>
+                <Button fx:id="softDropButton" text="DOWN" styleClass="key-button" prefWidth="120"/>
+            </HBox>
+            
+            <!-- Hard Drop -->
+            <HBox alignment="CENTER" spacing="20">
+                <Label text="Hard Drop:" styleClass="settings-label" prefWidth="150"/>
+                <Button fx:id="hardDropButton" text="SPACE" styleClass="key-button" prefWidth="120"/>
+            </HBox>
+            
+            <!-- Hold -->
+            <HBox alignment="CENTER" spacing="20">
+                <Label text="Hold:" styleClass="settings-label" prefWidth="150"/>
+                <Button fx:id="holdButton" text="C" styleClass="key-button" prefWidth="120"/>
+            </HBox>
+            
+            <!-- Pause -->
+            <HBox alignment="CENTER" spacing="20">
+                <Label text="Pause:" styleClass="settings-label" prefWidth="150"/>
+                <Button fx:id="pauseButton" text="P" styleClass="key-button" prefWidth="120"/>
+            </HBox>
+            
+            <!-- Restart -->
+            <HBox alignment="CENTER" spacing="20">
+                <Label text="Restart:" styleClass="settings-label" prefWidth="150"/>
+                <Button fx:id="restartButton" text="N" styleClass="key-button" prefWidth="120"/>
+            </HBox>
+        </VBox>
+
+        <!-- Action buttons -->
+        <HBox alignment="CENTER" spacing="16">
+            <Button fx:id="resetButton"
+                    text="Reset to Defaults"
+                    onAction="#handleReset"
+                    styleClass="menu-button"/>
+            
+            <Button fx:id="saveButton"
+                    text="Save &amp; Back"
+                    onAction="#handleSave"
+                    styleClass="menu-button"/>
+            
+            <Button fx:id="cancelButton"
+                    text="Cancel"
+                    onAction="#handleCancel"
+                    styleClass="menu-button-quit"/>
+        </HBox>
+    </VBox>
+
+    <!-- Reuse the same stylesheet as the game scene. -->
+    <stylesheets>
+        <URL value="@window_style.css"/>
+    </stylesheets>
+</StackPane>
+

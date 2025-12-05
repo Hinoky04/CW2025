@@ -25,50 +25,114 @@ public final class Score {
     private final IntegerProperty totalLines = new SimpleIntegerProperty(0);
     private final IntegerProperty combo = new SimpleIntegerProperty(0);
 
+    /**
+     * Gets the score property for JavaFX binding.
+     *
+     * @return the score IntegerProperty
+     */
     public IntegerProperty scoreProperty() {
         return score;
     }
 
+    /**
+     * Gets the level property for JavaFX binding.
+     *
+     * @return the level IntegerProperty
+     */
     public IntegerProperty levelProperty() {
         return level;
     }
 
+    /**
+     * Gets the total lines property for JavaFX binding.
+     *
+     * @return the total lines IntegerProperty
+     */
     public IntegerProperty totalLinesProperty() {
         return totalLines;
     }
 
+    /**
+     * Gets the combo property for JavaFX binding.
+     *
+     * @return the combo IntegerProperty
+     */
     public IntegerProperty comboProperty() {
         return combo;
     }
 
+    /**
+     * Gets the current level.
+     *
+     * @return the current level (1-10)
+     */
     public int getLevel() {
         return level.get();
     }
 
+    /**
+     * Gets the total number of lines cleared.
+     *
+     * @return the total lines cleared
+     */
     public int getTotalLines() {
         return totalLines.get();
     }
 
+    /**
+     * Gets the current combo multiplier.
+     *
+     * @return the combo value (0-4)
+     */
     public int getCombo() {
         return combo.get();
     }
 
     /**
-     * Adds a raw score bonus (used for soft drop etc.).
+     * Adds a raw score bonus (used for soft drop, hard drop, rotation, etc.).
      * Does not affect combo or level.
+     *
+     * @param points the number of points to add
      */
     public void add(int points) {
         score.set(score.get() + points);
     }
 
     /**
+     * Awards points for rotating a piece.
+     */
+    public void addRotationScore() {
+        add(5); // Small bonus for rotating
+    }
+
+    /**
+     * Awards points for moving a piece horizontally.
+     */
+    public void addMoveScore() {
+        add(1); // Small bonus for moving left/right
+    }
+
+    /**
+     * Awards points for hard dropping a piece.
+     * @param cellsDropped number of cells the piece dropped
+     */
+    public void addHardDropScore(int cellsDropped) {
+        add(cellsDropped * 2); // 2 points per cell for hard drop
+    }
+
+    /**
+     * Awards points for holding a piece.
+     */
+    public void addHoldScore() {
+        add(3); // Small bonus for using hold strategically
+    }
+
+    /**
      * Registers that some lines were cleared on a landing and applies:
-     *  - total line count
-     *  - combo multiplier
-     *  - level progression
+     * total line count, combo multiplier, and level progression.
      *
      * @param linesRemoved number of lines cleared by this landing
-     * @param scoreBonus   base score reward for this clear (before combo)
+     * @param scoreBonus base score reward for this clear (before combo multiplier)
      */
     public void registerLinesCleared(int linesRemoved, int scoreBonus) {
         if (linesRemoved <= 0) {
@@ -103,7 +167,7 @@ public final class Score {
 
     /**
      * Called when a brick lands but no lines are cleared.
-     * Breaks the combo chain.
+     * Resets the combo chain to zero.
      */
     public void registerLandingWithoutClear() {
         resetComboInternal();
@@ -113,6 +177,10 @@ public final class Score {
         combo.set(0);
     }
 
+    /**
+     * Resets all score-related values to their initial state.
+     * Sets score to 0, level to 1, total lines to 0, and combo to 0.
+     */
     public void reset() {
         score.set(0);
         level.set(1);

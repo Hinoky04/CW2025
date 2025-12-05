@@ -1,5 +1,10 @@
 package com.comp2042;
 
+/**
+ * Data class containing a snapshot of the current game view state.
+ * Used to pass rendering information from the game logic to the GUI.
+ * Includes active brick, position, next/hold previews, and ghost piece position.
+ */
 public final class ViewData {
 
     private final int[][] brickData;
@@ -23,7 +28,13 @@ public final class ViewData {
     private final int ghostYPosition;
 
     /**
-     * Existing constructor – no hold brick, no queue.
+     * Constructor for ViewData without hold brick or next queue.
+     * Used for backwards compatibility.
+     *
+     * @param brickData the current falling brick shape
+     * @param xPosition the X position of the brick
+     * @param yPosition the Y position of the brick
+     * @param nextBrickData the next brick to spawn
      */
     public ViewData(int[][] brickData,
                     int xPosition,
@@ -33,7 +44,13 @@ public final class ViewData {
     }
 
     /**
-     * Existing constructor – with hold brick, no queue.
+     * Constructor for ViewData with hold brick but no next queue.
+     *
+     * @param brickData the current falling brick shape
+     * @param xPosition the X position of the brick
+     * @param yPosition the Y position of the brick
+     * @param nextBrickData the next brick to spawn
+     * @param holdBrickData the held brick (may be null)
      */
     public ViewData(int[][] brickData,
                     int xPosition,
@@ -44,14 +61,16 @@ public final class ViewData {
     }
 
     /**
-     * New constructor – supports a full next queue (up to 3 bricks) and hold brick.
+     * Full constructor supporting next queue, hold brick, and ghost position.
      *
-     * @param brickData     current falling brick.
-     * @param xPosition     x position on the board.
-     * @param yPosition     y position on the board.
-     * @param nextBrickData first upcoming brick (same as queue[0] if provided).
-     * @param nextQueue     queue of upcoming bricks (may be null).
-     * @param holdBrickData held brick (may be null).
+     * @param brickData current falling brick shape
+     * @param xPosition X position of the brick on the board
+     * @param yPosition Y position of the brick on the board
+     * @param nextBrickData first upcoming brick (same as queue[0] if provided)
+     * @param nextQueue queue of upcoming bricks (up to 3, may be null)
+     * @param holdBrickData held brick (may be null)
+     * @param ghostXPosition X position where the brick would land if hard-dropped
+     * @param ghostYPosition Y position where the brick would land if hard-dropped
      */
     public ViewData(int[][] brickData,
                     int xPosition,
@@ -71,14 +90,29 @@ public final class ViewData {
         this.ghostYPosition = ghostYPosition;
     }
 
+    /**
+     * Gets a defensive copy of the current falling brick shape.
+     *
+     * @return a copy of the brick data matrix
+     */
     public int[][] getBrickData() {
         return MatrixOperations.copy(brickData);
     }
 
+    /**
+     * Gets the X position of the current brick.
+     *
+     * @return the X coordinate
+     */
     public int getxPosition() {
         return xPosition;
     }
 
+    /**
+     * Gets the Y position of the current brick.
+     *
+     * @return the Y coordinate
+     */
     public int getyPosition() {
         return yPosition;
     }
