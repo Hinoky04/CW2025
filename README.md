@@ -84,38 +84,7 @@ All dependencies are managed by Maven and will be automatically downloaded:
 
 ---
 
-## Implemented but Not Working Properly
 
-### Ghost Piece System
-**Status:** Partially working with known issues
-
-**Issues:**
-- Ghost piece sometimes appears at incorrect height
-- Ghost piece can be misaligned by one cell
-- Ghost piece may be visible in Invisible Mode when it should be hidden
-
-**Location:** `src/main/java/com/comp2042/logic/GhostPieceCalculator.java`
-
-**Attempted Solutions:**
-- Simplified the ghost piece calculation logic
-- Added mode-aware visibility checks
-- The system was temporarily simplified in Version 1.0.6 while a proper fix is being designed
-
-**Note:** This is documented in `BUGS_AND_SMELLS.md` as a known issue that requires further investigation.
-
----
-
-## Features Not Implemented
-
-### Advanced Ghost Piece System
-**Reason:** The current ghost piece implementation has stability issues. A complete redesign is needed to properly handle edge cases, especially in Invisible Mode. This was deferred to focus on core gameplay stability.
-
-### Per-Mode Configuration System
-**Reason:** While the architecture was prepared for mode-specific configurations (drop speed, ghost visibility, grid visibility), the full implementation was not completed. The `GameConfig` class exists and is partially implemented, but not all configuration options are fully utilized across all modes.
-
-**Location:** `src/main/java/com/comp2042/models/GameConfig.java`
-
----
 
 ## New Java Classes
 
