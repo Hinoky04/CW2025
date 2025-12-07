@@ -60,7 +60,7 @@ All dependencies are managed by Maven and will be automatically downloaded:
 - ✅ Line clearing with score calculation
 - ✅ Hold piece functionality
 - ✅ Next piece preview
-- ✅ Ghost piece visualization (with some known issues)
+- ✅ Ghost piece visualization showing the exact landing position of the current piece
 - ✅ Score system with bonuses for multiple line clears
 - ✅ Level progression
 - ✅ Game over detection and handling
@@ -84,6 +84,11 @@ All dependencies are managed by Maven and will be automatically downloaded:
 
 ---
 
+## Implemented but Not Working Properly
+
+None.  
+All implemented features are working as intended in the final version.  
+Historical issues are documented in `BUGS_AND_SMELLS.md`.
 
 
 ## New Java Classes
@@ -206,9 +211,9 @@ These classes were extracted from `GuiController` to improve code organization a
 7. **`GhostPieceCalculator.java`**
    - **Location:** `src/main/java/com/comp2042/logic/GhostPieceCalculator.java`
    - **Changes:**
-     - Simplified ghost piece calculation (temporary fix)
-     - Added mode-aware visibility checks
-   - **Rationale:** To address known issues with ghost piece rendering. A complete redesign is planned for future versions.
+     - Reworked ghost piece landing calculation to use the same collision rules as the active piece
+     - Added mode-aware visibility checks (e.g. ghost hidden in Invisible Mode)
+   - **Rationale:** To fix historical ghost piece rendering issues and make the behaviour match modern Tetris expectations.
 
 8. **`BrickRotator.java`**
    - **Location:** `src/main/java/com/comp2042/logic/BrickRotator.java`
@@ -289,20 +294,18 @@ These classes were extracted from `GuiController` to improve code organization a
 - Refreshed project structure
 - The code was correct; the IDE just needed to refresh its understanding of the project
 
-### 4. Ghost Piece Rendering Issues
-**Problem:** Ghost piece had multiple rendering problems that were difficult to isolate.
+### 4. Ghost Piece Rendering Issues (historical, now fixed)
 
-**Symptoms:**
-- Incorrect height calculation
-- Cell misalignment
-- Visibility in Invisible Mode when it shouldn't be visible
+**Problem (earlier versions):**  
+The ghost piece sometimes appeared at the wrong height, could be misaligned by one cell, and was visible in Invisible Mode when it should have been hidden.
 
-**Attempted Solutions:**
-- Simplified the ghost piece calculation logic
-- Added mode-aware checks
-- Temporarily reduced functionality while designing a proper fix
+**Resolution:**  
+- Moved landing calculation into dedicated board/logic code using the same collision rules as real pieces.  
+- Unified the coordinate transform used by the GUI for background, active piece, and ghost.  
+- Added mode-aware visibility checks so the ghost is hidden in Invisible Mode.
 
-**Current Status:** Documented as a known issue. A complete redesign of the ghost piece system is planned for future versions.
+These historical issues are documented in more detail in `BUGS_AND_SMELLS.md`.  
+In the final submission version, the ghost piece behaves as intended.
 
 **Location:** `src/main/java/com/comp2042/logic/GhostPieceCalculator.java`
 
