@@ -8,7 +8,7 @@
 
 <!-- Settings page for configuring key bindings -->
 <StackPane xmlns:fx="http://javafx.com/fxml"
-           fx:controller="com.comp2042.SettingsController"
+           fx:controller="com.comp2042.controllers.SettingsController"
            fx:id="rootPane"
            focusTraversable="true">
     

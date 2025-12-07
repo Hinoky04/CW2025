@@ -104,6 +104,9 @@
                 <configuration>
                     <destDir>Javadoc</destDir>
                     <doclint>none</doclint>
+                    <sourceFileIncludes>
+                        <sourceFileInclude>**/*.java</sourceFileInclude>
+                    </sourceFileIncludes>
                 </configuration>
             </plugin>
         </plugins>

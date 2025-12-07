@@ -13,6 +13,12 @@ import javafx.stage.Stage;
 import java.io.IOException;
 import java.net.URL;
 
+import com.comp2042.controllers.GameController;
+import com.comp2042.controllers.GuiController;
+import com.comp2042.controllers.MainMenuController;
+import com.comp2042.controllers.SettingsController;
+import com.comp2042.models.GameMode;
+
 /**
  * Main application class for TetrisJFX.
  * Manages the JavaFX application lifecycle, scene switching, and window configuration.
@@ -77,7 +83,7 @@ public class Main extends Application {
      * Loads and shows the main menu scene.
      * Displays the game mode selection screen with options for Classic, Survival, Hyper, and Rush 40 modes.
      */
-    void showMainMenu() {
+    public void showMainMenu() {
         URL location = getClass().getClassLoader().getResource(MAIN_MENU_FXML);
         if (location == null) {
             throw new IllegalStateException("Cannot find FXML file " + MAIN_MENU_FXML);
@@ -117,7 +123,7 @@ public class Main extends Application {
      * @param returnToGameMode if not null, return to this game mode after saving/canceling;
      *                         if null, return to main menu
      */
-    void showSettingsScene(GameMode returnToGameMode) {
+    public void showSettingsScene(GameMode returnToGameMode) {
         URL location = getClass().getClassLoader().getResource(SETTINGS_FXML);
         if (location == null) {
             throw new IllegalStateException("Cannot find FXML file " + SETTINGS_FXML);
@@ -157,7 +163,7 @@ public class Main extends Application {
      * Overloaded method for backward compatibility (from main menu).
      * Shows settings scene and returns to main menu after closing.
      */
-    void showSettingsScene() {
+    public void showSettingsScene() {
         showSettingsScene(null);
     }
 
@@ -168,19 +174,32 @@ public class Main extends Application {
      *
      * @param mode the game mode to start (Classic, Survival, Hyper, or Rush 40)
      */
-    void showGameScene(GameMode mode) {
+    public void showGameScene(GameMode mode) {
+        System.out.println("showGameScene called with mode: " + mode);
         URL location = getClass().getClassLoader().getResource(GAME_FXML);
         if (location == null) {
+            System.err.println("ERROR: Cannot find FXML file " + GAME_FXML);
             throw new IllegalStateException("Cannot find FXML file " + GAME_FXML);
         }
+        System.out.println("Found FXML file at: " + location);
 
         try {
             FXMLLoader loader = new FXMLLoader(location);
+            System.out.println("Loading FXML...");
             Parent root = loader.load();
+            System.out.println("FXML loaded successfully");
+            
             GuiController guiController = loader.getController();
+            if (guiController == null) {
+                System.err.println("ERROR: GuiController is null after loading FXML");
+                throw new IllegalStateException("GuiController is null");
+            }
+            System.out.println("GuiController obtained: " + guiController);
 
             // Let GUI go back to menu and know which mode we are in.
+            System.out.println("Initializing GuiController...");
             guiController.init(this);
+            System.out.println("Setting game mode to: " + mode);
             guiController.setGameMode(mode);
 
             // Let the root layout grow with the stage size.
@@ -190,8 +209,10 @@ public class Main extends Application {
             Scene scene = new Scene(root);
             attachFullscreenToggle(scene);
 
+            System.out.println("Setting scene on stage...");
             primaryStage.setScene(scene);
             primaryStage.show();
+            System.out.println("Scene set and stage shown");
 
             // Ensure fullscreen mode is maintained
             if (!primaryStage.isFullScreen()) {
@@ -199,8 +220,22 @@ public class Main extends Application {
             }
 
             // Start game logic.
+            System.out.println("Creating GameController...");
+            try {
             new GameController(guiController, mode);
+                System.out.println("GameController created successfully");
+            } catch (Exception e) {
+                System.err.println("ERROR: Failed to create GameController: " + e.getMessage());
+                e.printStackTrace();
+                // Don't throw - let the scene show even if GameController fails
+            }
         } catch (IOException e) {
+            System.err.println("ERROR: Failed to load game scene: " + e.getMessage());
+            e.printStackTrace();
+            throw new IllegalStateException("Failed to load game scene", e);
+        } catch (Exception e) {
+            System.err.println("ERROR: Unexpected exception in showGameScene: " + e.getMessage());
+            e.printStackTrace();
             throw new IllegalStateException("Failed to load game scene", e);
         }
     }

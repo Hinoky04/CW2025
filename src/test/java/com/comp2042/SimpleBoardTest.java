@@ -1,5 +1,8 @@
 package com.comp2042;
 
+import com.comp2042.models.ClearRow;
+import com.comp2042.models.SimpleBoard;
+import com.comp2042.models.ViewData;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

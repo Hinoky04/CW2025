@@ -1,5 +1,6 @@
 package com.comp2042;
 
+import com.comp2042.models.Score;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

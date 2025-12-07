@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import com.comp2042.GameOverPanel?>
+<?import com.comp2042.ui.GameOverPanel?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.Group?>
 <?import javafx.scene.control.Button?>
@@ -9,7 +9,7 @@
 <?import javafx.scene.text.Text?>
 <?import java.net.URL?>
 
-<StackPane fx:controller="com.comp2042.GuiController"
+<StackPane fx:controller="com.comp2042.controllers.GuiController"
            xmlns:fx="http://javafx.com/fxml"
            alignment="CENTER">
 
@@ -180,16 +180,14 @@
                                 <!-- Falling brick (overlay). brickPanel is positioned from controller -->
                                 <GridPane fx:id="brickPanel" vgap="1" hgap="1"/>
 
-                                <!-- Notifications + GameOverPanel -->
+                                <!-- Notifications -->
                                 <Group fx:id="groupNotification"
                                        layoutX="14.0"
-                                       layoutY="203.0">
-                                    <children>
-                                        <VBox alignment="CENTER">
-                                            <GameOverPanel fx:id="gameOverPanel"/>
-                                        </VBox>
-                                    </children>
-                                </Group>
+                                       layoutY="203.0"/>
+
+                                <!-- Game Over overlay (covers entire game area like pause menu) -->
+                                <GameOverPanel fx:id="gameOverPanel"
+                                               visible="false"/>
 
                                 <!-- Pause overlay -->
                                 <StackPane fx:id="pauseOverlay"
